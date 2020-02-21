@@ -24,7 +24,7 @@ public class Schedule {
 //        shifts();
 //        manpower();
 //        softconstraint();
-        hardconstraint();
+//        hardconstraint();
 //        wantedpattern();
     }
 
