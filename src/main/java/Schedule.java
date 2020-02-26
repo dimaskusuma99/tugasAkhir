@@ -2,7 +2,7 @@ import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.*;
 import java.io.File;
 import java.io.IOException;
-import java.sql.SQLOutput;
+
 import java.sql.Time;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -10,6 +10,9 @@ import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 
 public class Schedule {
+    static Employee [] emp;
+    static Shift [] shiftx;
+    static Manpower [] plan;
     static int last = 0;
     static int side = 0;
     static int sidex = 0;
@@ -17,18 +20,119 @@ public class Schedule {
     static Row row;
 
     public static final String XLSX_FILE_PATH =
-            "D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\OpTur1.xls";
+            "D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\OpTur7.xls";
 
     public static void main(String[] args) throws IOException, InvalidFormatException, ParseException {
-//        employees();
-//        shifts();
-//        manpower();
-//        softconstraint();
-//        hardconstraint();
-//        wantedpattern();
+        String [][] employee = employees().clone();
+        String [][] shift = shifts().clone();
+        String [][] manpower = manpower().clone();
+
+        //OBJEK EMPLOYEE
+        String [][] weekend = new String[employee.length][];
+        for(int i=0; i < employee.length; i++)
+            weekend[i] = employee[i][2].split(", |,");
+        int kanan = 0;
+        for(int i=0; i < weekend.length; i++){
+            if (kanan < weekend[i].length)
+                kanan = weekend[i].length;
+        }
+        int [][] week = new int[weekend.length][kanan];
+        for(int i=0; i < weekend.length; i++)
+            for (int j = 0; j < weekend[i].length; j++)
+                week[i][j] = Integer.parseInt(weekend[i][j]);
+
+        emp = new Employee[last];
+        for (int i = 0; i < last; i++){
+            emp[i]= new Employee(employee[i][0], employee[i][1], week[i], employee[i][3]);
+        }
+
+        for (int i = 0; i < shift.length; i++) {
+//                System.out.println(shift[i][10] + " " + shift[i][11] + " " + shift[i][12] + " " + shift[i][13]);
+        }
+        //OBJEK SHIFT
+        DateFormat time = new SimpleDateFormat("hh:mm");
+        LocalTime[][] times = new LocalTime[shift.length][2];
+        for (int i = 0; i < shift.length; i++) {
+            String first = shift[i][10]+":"+shift[i][11];
+            String last = shift[i][12]+":"+shift[i][13];
+            Time start = new Time(time.parse(first).getTime());
+            Time finish = new Time(time.parse(last).getTime());
+            LocalTime startx = start.toLocalTime();
+            LocalTime finishx = finish.toLocalTime();
+            times[i][0] = startx;
+            times[i][1] = finishx;
+        }
+
+        shiftx = new Shift[last];
+        for (int i = 0; i < last; i++){
+            shiftx[i]= new Shift(shift[i][0], shift[i][1], shift[i][2], shift[i][3], shift[i][4], shift[i][5],
+                    shift[i][6], shift[i][7], shift[i][8], shift[i][9], times[i][0], times[i][1],
+                    shift[i][14]);
+        }
+
+        //OBJEK MANPOWER
+        plan = new Manpower[last];
+        for (int i = 0; i < last; i++){
+            plan[i]= new Manpower(manpower[i][0], manpower[i][1], manpower[i][2], manpower[i][3],
+                    manpower[i][4], manpower[i][5], manpower[i][6], manpower[i][7], manpower[i][8]);
+        }
+
+        int [][] matrixsol = new int[15][42];
+
+        for (int i = 0; i < 42; i++) {
+            for (int j = 0; j < 15; j++){
+                for (int k = 0; k < 6; k++){
+                    if (cekhc2(matrixsol, i, k, j)) {
+                        matrixsol[j][i] = k + 1;
+                        break;
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < matrixsol.length; i++) {
+            for (int j = 0; j < matrixsol[i].length; j++) {
+                System.out.print(matrixsol[i][j] + " ");
+            }
+            System.out.println();
+        }
     }
 
-    public static void employees() throws IOException, InvalidFormatException {
+    public static int needs (int [][] solution, int shift, int day){
+        int count = 0;
+        for (int i = 0; i < solution.length; i++) {
+            if (solution[i][day] == shift+1)
+                count++;
+        }
+        return count;
+    }
+
+    public static boolean cekhc2(int [][] solution, int day, int shift, int employee){
+        if (day % 7 == 0)
+            if (needs(solution, shift, day) < plan[shift].getMonday())
+                return true;
+        if (day % 7 == 1)
+            if (needs(solution, shift, day) < plan[shift].getTuesday())
+                return true;
+        if (day % 7 == 2)
+            if (needs(solution, shift, day) < plan[shift].getWednesday())
+                return true;
+        if (day % 7 == 3)
+            if (needs(solution, shift, day) < plan[shift].getThursday())
+                return true;
+        if (day % 7 == 4)
+            if (needs(solution, shift, day) < plan[shift].getFriday())
+                return true;
+        if (day % 7 == 5)
+            if (needs(solution, shift, day) < plan[shift].getSaturday())
+                return true;
+        if (day % 7 == 6)
+            if (needs(solution, shift, day) < plan[shift].getSunday())
+                return true;
+        return false;
+    }
+
+    public static String[][] employees() throws IOException, InvalidFormatException {
         Workbook workbook = WorkbookFactory.create(new File(XLSX_FILE_PATH));
         Sheet sheet = workbook.getSheetAt(0);
         DataFormatter dataFormatter = new DataFormatter();
@@ -57,37 +161,15 @@ public class Schedule {
             }
             side = 0;
             last++;
-        }
-        String [][] weekend = new String[data.length][];
-        for(int i=0; i < data.length; i++)
-            weekend[i] = data[i][2].split(", |,");
-        int kanan = 0;
-        for(int i=0; i < weekend.length; i++){
-            if (kanan < weekend[i].length)
-                kanan = weekend[i].length;
-        }
-        int [][] week = new int[weekend.length][kanan];
-        for(int i=0; i < weekend.length; i++) {
-            for (int j = 0; j < weekend[i].length; j++) {
-                week[i][j] = Integer.parseInt(weekend[i][j]);
-                System.out.print(week[i][j] + "\t");
-            }
-            System.out.println();
-        }
-
-        Employee[] emp = new Employee[last];
-        for (int i = 0; i < last; i++){
-            emp[i]= new Employee(data[i][0], data[i][1], week[i], data[i][3]);
-//            System.out.println(emp[i].getId() + "\t" + emp[i].getHours() + "\t" + week[i] + "\t" +
-//                                emp[i].getCompetence());
-        }
+        } return data;
     }
 
-    public static void shifts() throws IOException, InvalidFormatException, ParseException {
+    public static String[][] shifts() throws IOException, InvalidFormatException{
         Workbook workbook = WorkbookFactory.create(new File(XLSX_FILE_PATH));
         Sheet sheet = workbook.getSheetAt(1);
         DataFormatter dataFormatter = new DataFormatter();
 
+        int lasta = 0;
         for (int i = first-1; i <= sheet.getLastRowNum(); i++) {
             row = sheet.getRow(i);
             for (Cell cell: row) {
@@ -98,47 +180,25 @@ public class Schedule {
             if (sidex < side)
                 sidex = side;
             side = 0;
-            last++;
+            lasta++;
         }
-        String [][] data = new String[last][sidex];
-//        System.out.println(last + " " + sidex);
-        last = 0;
+        String [][] data = new String[lasta][sidex];
+//        System.out.println(lasta + " " + sidex);
+        lasta = 0;
         for (int i = first-1; i <= sheet.getLastRowNum(); i++) {
             row = sheet.getRow(i);
             for (Cell cell : row) {
                 String cellValue = dataFormatter.formatCellValue(cell);
-                data[last][side] = cellValue;
+                data[lasta][side] = cellValue;
                 side++;
             }
             side = 0;
-            last++;
+            lasta++;
         }
-        DateFormat time = new SimpleDateFormat("hh:mm");
-        LocalTime[][] times = new LocalTime[data.length][2];
-        for (int i = 0; i < data.length; i++) {
-            String first = data[i][10]+":"+data[i][11];
-            String last = data[i][12]+":"+data[i][13];
-            Time start = new Time(time.parse(first).getTime());
-            Time finish = new Time(time.parse(last).getTime());
-            LocalTime startx = start.toLocalTime();
-            LocalTime finishx = finish.toLocalTime();
-            times[i][0] = startx;
-            times[i][1] = finishx;
-        }
-
-        Shift[] shift = new Shift[last];
-        for (int i = 0; i < last; i++){
-            shift[i]= new Shift(data[i][0], data[i][1], data[i][2], data[i][3], data[i][4], data[i][5],
-                                data[i][6], data[i][7], data[i][8], data[i][9], times[i][0], times[i][1],
-                                data[i][14]);
-            System.out.println(shift[i].getId() + "\t" + shift[i].getMonday() + "\t" + shift[i].getTuesday() + "\t" +
-                                shift[i].getWednesday() + "\t" + shift[i].getThursday() + "\t" + shift[i].getFriday() + "\t" +
-                                shift[i].getSaturday() + "\t" + shift[i].getSunday() + "\t" + shift[i].getCategory() + "\t" +
-                                shift[i].getName() + "\t" + shift[i].getCompetence());
-        }
+        return data;
     }
 
-    public static void manpower() throws IOException, InvalidFormatException {
+    public static String[][] manpower() throws IOException, InvalidFormatException {
         Workbook workbook = WorkbookFactory.create(new File(XLSX_FILE_PATH));
         Sheet sheet = workbook.getSheetAt(2);
         DataFormatter dataFormatter = new DataFormatter();
@@ -167,15 +227,7 @@ public class Schedule {
             }
             side = 0;
             last++;
-        }
-        Manpower[] plan = new Manpower[last];
-        for (int i = 0; i < last; i++){
-            plan[i]= new Manpower(data[i][0], data[i][1], data[i][2], data[i][3], data[i][4], data[i][5],
-                                    data[i][6], data[i][7], data[i][8]);
-            System.out.println(plan[i].getShift() + "\t" + plan[i].getMonday() + "\t" + plan[i].getTuesday() + "\t" +
-                    plan[i].getWednesday() + "\t" + plan[i].getThursday() + "\t" + plan[i].getFriday() + "\t" +
-                    plan[i].getSaturday() + "\t" + plan[i].getSunday() + "\t" + plan[i].getId());
-        }
+        } return data;
     }
 
     public static void softconstraint() throws IOException, InvalidFormatException {
