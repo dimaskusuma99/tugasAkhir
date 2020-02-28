@@ -18,6 +18,10 @@ public class Employee {
         return hours;
     }
 
+    public int[] getWeek() {
+        return week;
+    }
+
     public String getCompetence(){
         return competence;
     }
