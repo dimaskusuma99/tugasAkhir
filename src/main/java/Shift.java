@@ -61,6 +61,14 @@ public class Shift {
         return name;
     }
 
+    public LocalTime getStart() {
+        return start;
+    }
+
+    public LocalTime getFinish() {
+        return finish;
+    }
+
     public String getCompetence(){
         return competence;
     }

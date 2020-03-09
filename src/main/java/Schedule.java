@@ -14,6 +14,7 @@ public class Schedule {
     static Employee[] emp;
     static Shift[] shiftx;
     static Manpower[] plan;
+    static Constraint hard;
     static Row row;
 
     public static final String XLSX_FILE_PATH =
@@ -23,6 +24,7 @@ public class Schedule {
         String[][] employee = employees().clone();
         String[][] shift = shifts().clone();
         String[][] manpower = manpower().clone();
+        String[] constraint = hardconstraint().clone();
 
         //OBJEK EMPLOYEE
         String[][] weekend = new String[employee.length][];
@@ -62,6 +64,8 @@ public class Schedule {
             LocalTime finishx = finish.toLocalTime();
             times[i][0] = startx;
             times[i][1] = finishx;
+//            LocalTime total = finishx.minusHours(startx.getHour()).plusMinutes(startx.getMinute());
+//            System.out.println(total);
         }
 
         shiftx = new Shift[shift.length];
@@ -70,6 +74,9 @@ public class Schedule {
                     shift[i][6], shift[i][7], shift[i][8], shift[i][9], times[i][0], times[i][1],
                     shift[i][14]);
         }
+//        double workingHour = shiftx[0].getSunday() + shiftx[0].getMonday() + shiftx[0].getTuesday();
+//        System.out.println(workingHour);
+
 
         //OBJEK MANPOWER
         plan = new Manpower[manpower.length];
@@ -78,18 +85,19 @@ public class Schedule {
                     manpower[i][4], manpower[i][5], manpower[i][6], manpower[i][7], manpower[i][8]);
         }
 
+        //OBJEK CONSTRAINT
+        hard = new Constraint(constraint);
+        hard.setHc7();
+//        System.out.println(hard.getHc5a());
+
         int [][] matrixsol = new int[employee.length][42];
 
         for (int i = 0; i < 42; i++) {
             for (int j = 0; j < employee.length; j++){
                 for (int k = 0; k < shift.length; k++){
-                    if (checkHC2(matrixsol, i, k, j)) {
-                        if (checkHC4Competence(k, j) && checkHC4Week(i, j)) {
-//                            if (checkHC4Week(i, j)) {
-                                matrixsol[j][i] = k + 1;
-                                break;
-//                            }
-                        }
+                    if (checkHC2(matrixsol, i, k, j) && checkHC4Competence(k, j) && checkHC4Week(i,j) && checkHC7(matrixsol, j, i, k)) {
+                        matrixsol[j][i] = k + 1;
+                        break;
                     }
                 }
             }
@@ -101,12 +109,69 @@ public class Schedule {
             }
             System.out.println();
         }
-
-//        for (int i = 0; i < 42; i++) {
-//            for (int j = 0; j < 15 ; j++) {
-//                System.out.println(checkHC4Week( i, j));
-//            }
+//        for (int i = 0; i < shiftx.length ; i++) {
+//            double total = shiftx[i].getMonday() + shiftx[i].getSunday() + shiftx[i].getTuesday() +
+//                    shiftx[i].getThursday() + shiftx[i].getWednesday() + shiftx[i].getFriday() + shiftx[i].getSaturday();
+//            System.out.println(total);
 //        }
+
+    }
+
+    public static boolean checkHC3 (int solution [][], int employee, int day, int shift){
+        double limit = 0;
+        int week = day/7;
+
+
+
+        return false;
+    }
+
+    public static boolean checkHC7 (int solution [][], int employee,  int day, int shift){
+        double workingHours = 0;
+        int week = day/7;
+
+        for (int i = week * 7; i < (week+1)*7; i++) {
+            if (solution[employee][i] != 0){
+                if (day % 7 == 0)
+                    workingHours += shiftx[solution[employee][i]-1].getMonday();
+                if (day % 7 == 1)
+                    workingHours += shiftx[solution[employee][i]-1].getTuesday();
+                if (day % 7 == 2)
+                    workingHours += shiftx[solution[employee][i]-1].getWednesday();
+                if (day % 7 == 3)
+                    workingHours += shiftx[solution[employee][i]-1].getThursday();
+                if (day % 7 == 4)
+                    workingHours += shiftx[solution[employee][i]-1].getFriday();
+                if (day % 7 == 5)
+                    workingHours += shiftx[solution[employee][i]-1].getSaturday();
+                if (day % 7 == 6)
+                    workingHours += shiftx[solution[employee][i]-1].getSunday();
+            }
+        }
+        if (workingHours + shiftx[shift].getMonday() <= hard.getHc7())
+            return true;
+        if (workingHours + shiftx[shift].getTuesday() <= hard.getHc7())
+            return true;
+        if (workingHours + shiftx[shift].getWednesday() <= hard.getHc7())
+            return true;
+        if (workingHours + shiftx[shift].getThursday() <= hard.getHc7())
+            return true;
+        if (workingHours + shiftx[shift].getFriday() <= hard.getHc7())
+            return true;
+        if (workingHours + shiftx[shift].getSaturday() <= hard.getHc7())
+            return true;
+        if (workingHours + shiftx[shift].getSunday() <= hard.getHc7())
+            return true;
+
+
+//        double rata = 0;
+//        for (int i = 0; i < emp.length; i++) {
+//            rata = workingHours/6;
+//            System.out.println(rata);
+//            System.out.println(workingHours);
+//        }
+
+        return false;
     }
 
     public static int needs (int [][] solution, int shift, int day){
@@ -159,6 +224,8 @@ public class Schedule {
         return true;
     }
 
+
+
     public static String[][] employees() throws IOException, InvalidFormatException {
         Workbook workbook = WorkbookFactory.create(new File(XLSX_FILE_PATH));
         Sheet sheet = workbook.getSheetAt(0);
@@ -173,8 +240,6 @@ public class Schedule {
             row = sheet.getRow(i);
             for (Cell cell: row) {
                 side++;
-//                if(row == sheet.getRow(sheet.getLastRowNum()))
-//                    cell.getAddress();
             }
             if (sidex < side)
                 sidex = side;
@@ -210,8 +275,6 @@ public class Schedule {
             row = sheet.getRow(i);
             for (Cell cell: row) {
                 side++;
-//                if(row == sheet.getRow(sheet.getLastRowNum()))
-//                    cell.getAddress();
             }
             if (sidex < side)
                 sidex = side;
@@ -248,8 +311,6 @@ public class Schedule {
             row = sheet.getRow(i);
             for (Cell cell: row) {
                 side++;
-//                if(row == sheet.getRow(sheet.getLastRowNum()))
-//                    cell.getAddress();
             }
             if (sidex < side)
                 sidex = side;
@@ -271,7 +332,49 @@ public class Schedule {
         } return data;
     }
 
-    public static void softconstraint() throws IOException, InvalidFormatException {
+    public static String[] hardconstraint() throws IOException, InvalidFormatException {
+        Workbook workbook = WorkbookFactory.create(new File(XLSX_FILE_PATH));
+        Sheet sheet = workbook.getSheetAt(3);
+        DataFormatter dataFormatter = new DataFormatter();
+
+        int last = 0;
+        int side = 0;
+        int sidex = 0;
+        int first = 5;
+        for (int i = first-1; i <= 15; i++) {
+            row = sheet.getRow(i);
+            for (Cell cell: row) {
+                side++;
+            }
+            if (sidex < side) {
+                sidex = side;
+//                System.out.println(sidex);
+            }
+            side = 0;
+            last++;
+        }
+        String [][] data = new String[last][sidex];
+//        System.out.println(last + " " + sidex);
+        last = 0;
+        for (int i = first-1; i <= 15; i++) {
+            row = sheet.getRow(i);
+            for (Cell cell : row) {
+                String cellValue = dataFormatter.formatCellValue(cell);
+                data[last][side] = cellValue;
+                side++;
+            }
+            side = 0;
+            last++;
+        }
+
+        String [] cons = new String[data.length];
+        for (int i = 0; i < data.length; i++) {
+            cons[i] = data[i][3];
+        }
+        return cons;
+    }
+
+    public static Constraint[] softconstraint() throws IOException, InvalidFormatException {
         Workbook workbook = WorkbookFactory.create(new File(XLSX_FILE_PATH));
         Sheet sheet = workbook.getSheetAt(3);
         DataFormatter dataFormatter = new DataFormatter();
@@ -281,12 +384,10 @@ public class Schedule {
         int sidex = 0;
         int first = 5;
 
-        for (int i = first-1; i <= 15; i++) {
+        for (int i = first+13; i <= sheet.getLastRowNum(); i++) {
             row = sheet.getRow(i);
             for (Cell cell: row) {
                 side++;
-//                if(row == sheet.getRow(sheet.getLastRowNum()))
-//                    cell.getAddress();
             }
             if (sidex < side)
                 sidex = side;
@@ -294,9 +395,9 @@ public class Schedule {
             last++;
         }
         String [][] data = new String[last][sidex];
-//        System.out.println(last + " " + sidex);
+        System.out.println(last + " " + sidex);
         last = 0;
-        for (int i = first-1; i <= 15; i++) {
+        for (int i = first+13; i <= sheet.getLastRowNum(); i++) {
             row = sheet.getRow(i);
             for (Cell cell : row) {
                 String cellValue = dataFormatter.formatCellValue(cell);
@@ -308,53 +409,12 @@ public class Schedule {
         }
         Constraint[] soft = new Constraint[last];
         for (int i = 0; i < soft.length; i++){
-            soft[i]= new Constraint(data[i][0], data[i][1], data[i][2], data[i][3]);
-            System.out.println(soft[i].getValue());
-        }
-    }
-
-    public static void hardconstraint() throws IOException, InvalidFormatException {
-        Workbook workbook = WorkbookFactory.create(new File(XLSX_FILE_PATH));
-        Sheet sheet = workbook.getSheetAt(3);
-        DataFormatter dataFormatter = new DataFormatter();
-
-        int last = 0;
-        int side = 0;
-        int sidex = 0;
-        int first = 5;
-
-        for (int i = first+13; i <= sheet.getLastRowNum(); i++) {
-            row = sheet.getRow(i);
-            for (Cell cell: row) {
-                side++;
-//                if(row == sheet.getRow(sheet.getLastRowNum()))
-//                    cell.getAddress();
-            }
-            if (sidex < side)
-                sidex = side;
-            side = 0;
-            last++;
-        }
-        String [][] data = new String[last][sidex];
-//        System.out.println(last + " " + sidex);
-        last = 0;
-        for (int i = first+13; i <= sheet.getLastRowNum(); i++) {
-            row = sheet.getRow(i);
-            for (Cell cell : row) {
-                String cellValue = dataFormatter.formatCellValue(cell);
-                data[last][side] = cellValue;
-                side++;
-            }
-            side = 0;
-            last++;
-        }
-        Constraint[] hard = new Constraint[last];
-        for (int i = 0; i < hard.length; i++){
-            hard[i]= new Constraint(data[i][0], data[i][1], data[i][2], data[i][3]);
+//            soft[i]= new Constraint(data[i][0], data[i][1], data[i][2], data[i][3]);
 //            Row hc1 = sheet.getRow(1);
 //            System.out.println(hc1);
-            System.out.println(hard[i].getValue());
+//            System.out.println(soft[i].getValue());
         }
+        return soft;
     }
 
     public static void wantedpattern() throws IOException, InvalidFormatException {
@@ -371,8 +431,6 @@ public class Schedule {
             row = sheet.getRow(i);
             for (Cell cell: row) {
                 side++;
-//                if(row == sheet.getRow(sheet.getLastRowNum()))
-//                    cell.getAddress();
             }
             if (sidex < side)
                 sidex = side;
