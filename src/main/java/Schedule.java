@@ -8,7 +8,9 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Random;
 
 public class Schedule {
     static Employee[] emp;
@@ -16,6 +18,9 @@ public class Schedule {
     static Manpower[] plan;
     static Constraint hard;
     static Row row;
+    static int [][] noPairWeekday;
+    static int [][] noPairWeekend;
+    static double workingHours;
 
     public static final String XLSX_FILE_PATH =
             "D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\OpTur7.xls";
@@ -25,6 +30,7 @@ public class Schedule {
         String[][] shift = shifts().clone();
         String[][] manpower = manpower().clone();
         String[] constraint = hardconstraint().clone();
+
 
         //OBJEK EMPLOYEE
         String[][] weekend = new String[employee.length][];
@@ -64,7 +70,7 @@ public class Schedule {
             LocalTime finishx = finish.toLocalTime();
             times[i][0] = startx;
             times[i][1] = finishx;
-//            LocalTime total = finishx.minusHours(startx.getHour()).plusMinutes(startx.getMinute());
+//            LocalTime total = finishx.minusHours(startx.getHour()).minusMinutes(startx.getMinute());
 //            System.out.println(total);
         }
 
@@ -73,10 +79,8 @@ public class Schedule {
             shiftx[i]= new Shift(shift[i][0], shift[i][1], shift[i][2], shift[i][3], shift[i][4], shift[i][5],
                     shift[i][6], shift[i][7], shift[i][8], shift[i][9], times[i][0], times[i][1],
                     shift[i][14]);
+            System.out.println(shiftx[i].getSaturday() + " " + shiftx[i].getMonday());
         }
-//        double workingHour = shiftx[0].getSunday() + shiftx[0].getMonday() + shiftx[0].getTuesday();
-//        System.out.println(workingHour);
-
 
         //OBJEK MANPOWER
         plan = new Manpower[manpower.length];
@@ -88,38 +92,254 @@ public class Schedule {
         //OBJEK CONSTRAINT
         hard = new Constraint(constraint);
         hard.setHc7();
-//        System.out.println(hard.getHc5a());
+        hard.setHc5a();
+        hard.setHc5b();
+        hard.setHc5c();
+        hard.setHc5d();
+        hard.setHc5e();
+        hard.setHc5f();
 
+        //MEMBUAT PASANGAN SHIFT YANG DILARANG
+        int count = 0;
+        for (int i = 0; i < shiftx.length; i++) {
+            for (int j = 0; j < shiftx.length; j++) {
+                if (shiftx[i].getStart().compareTo(shiftx[j].getFinish()) < 0) {
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 2)
+                        if (hard.getHc5a().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0)
+                            count++;
+                    if (shiftx[i].getCategory() == 2 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5c().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0)
+                            count++;
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5e().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0)
+                            count++;
+                } else if (shiftx[i].getStart().compareTo(shiftx[j].getFinish()) > 0) {
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 2)
+                        if (hard.getHc5a().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0)
+                            count++;
+                    if (shiftx[i].getCategory() == 2 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5c().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0)
+                            count++;
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5e().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0)
+                            count++;
+                }
+            }
+        }
+        noPairWeekday = new int[count][2];
+        count = 0;
+        for (int i = 0; i < shiftx.length; i++) {
+            for (int j = 0; j < shiftx.length; j++) {
+                if (shiftx[i].getStart().compareTo(shiftx[j].getFinish()) < 0) {
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 2)
+                        if (hard.getHc5a().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0) {
+                            noPairWeekday[count][0] = i + 1;
+                            noPairWeekday[count][1] = j + 1;
+                            count++;
+                        }
+                    if (shiftx[i].getCategory() == 2 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5c().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0) {
+                            noPairWeekday[count][0] = i + 1;
+                            noPairWeekday[count][1] = j + 1;
+                            count++;
+                        }
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5e().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0) {
+                            noPairWeekday[count][0] = i + 1;
+                            noPairWeekday[count][1] = j + 1;
+                            count++;
+                        }
+                } else if (shiftx[i].getStart().compareTo(shiftx[j].getFinish()) > 0) {
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 2)
+                        if (hard.getHc5a().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0) {
+                            noPairWeekday[count][0] = i + 1;
+                            noPairWeekday[count][1] = j + 1;
+                            count++;
+                        }
+                    if (shiftx[i].getCategory() == 2 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5c().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0) {
+                            noPairWeekday[count][0] = i + 1;
+                            noPairWeekday[count][1] = j + 1;
+                            count++;
+                        }
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5e().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0) {
+                            noPairWeekday[count][0] = i + 1;
+                            noPairWeekday[count][1] = j + 1;
+                            count++;
+                        }
+                }
+            }
+        }
+
+        count = 0;
+        for (int i = 0; i < shiftx.length; i++) {
+            for (int j = 0; j < shiftx.length; j++) {
+                if (shiftx[i].getStart().compareTo(shiftx[j].getFinish()) < 0) {
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 2)
+                        if (hard.getHc5b().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0)
+                            count++;
+                    if (shiftx[i].getCategory() == 2 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5d().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0)
+                            count++;
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5f().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0)
+                            count++;
+                } else if (shiftx[i].getStart().compareTo(shiftx[j].getFinish()) > 0) {
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 2)
+                        if (hard.getHc5b().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0)
+                            count++;
+                    if (shiftx[i].getCategory() == 2 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5d().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0)
+                            count++;
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5f().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0)
+                            count++;
+                }
+            }
+        }
+        noPairWeekend = new int[count][2];
+        count = 0;
+        for (int i = 0; i < shiftx.length; i++) {
+            for (int j = 0; j < shiftx.length; j++) {
+                if (shiftx[i].getStart().compareTo(shiftx[j].getFinish()) < 0) {
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 2)
+                        if (hard.getHc5a().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0) {
+                            noPairWeekend[count][0] = i + 1;
+                            noPairWeekend[count][1] = j + 1;
+                            count++;
+                        }
+                    if (shiftx[i].getCategory() == 2 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5c().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0) {
+                            noPairWeekend[count][0] = i + 1;
+                            noPairWeekend[count][1] = j + 1;
+                            count++;
+                        }
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5e().compareTo(shiftx[j].getStart().minusHours(shiftx[i].getFinish().getHour()).minusMinutes(shiftx[i].getFinish().getMinute())) > 0) {
+                            noPairWeekend[count][0] = i + 1;
+                            noPairWeekend[count][1] = j + 1;
+                            count++;
+                        }
+                } else if (shiftx[i].getStart().compareTo(shiftx[j].getFinish()) > 0) {
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 2)
+                        if (hard.getHc5a().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0) {
+                            noPairWeekend[count][0] = i + 1;
+                            noPairWeekend[count][1] = j + 1;
+                            count++;
+                        }
+                    if (shiftx[i].getCategory() == 2 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5c().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0) {
+                            noPairWeekend[count][0] = i + 1;
+                            noPairWeekend[count][1] = j + 1;
+                            count++;
+                        }
+                    if (shiftx[i].getCategory() == 3 && shiftx[j].getCategory() == 1)
+                        if (hard.getHc5e().compareTo(shiftx[i].getStart().minusHours(shiftx[j].getFinish().getHour()).minusMinutes(shiftx[j].getFinish().getMinute())) > 0) {
+                            noPairWeekend[count][0] = i + 1;
+                            noPairWeekend[count][1] = j + 1;
+                            count++;
+                        }
+                }
+            }
+        }
+
+        //ASSIGN WEEKEND TERLEBIH DAHULLU
         int [][] matrixsol = new int[employee.length][42];
 
         for (int i = 0; i < 42; i++) {
+            if (i%7 == 5 || i%7 == 6) {
+            for (int j = 0; j < employee.length; j++) {
+                for (int k = 1; k <= shift.length; k++) {
+                    if (checkHC2(matrixsol, i, k, j) && checkHC4Competence(k, j) && checkHC4Week(i, j)) {
+                        matrixsol[j][i] = k;
+                        break;
+                        }
+                    }
+                }
+            }
+        }
+
+        //ASSIGN WEEKDAYS
+        for (int i = 0; i < 42; i++) {
             for (int j = 0; j < employee.length; j++){
-                for (int k = 0; k < shift.length; k++){
-                    if (checkHC2(matrixsol, i, k, j) && checkHC4Competence(k, j) && checkHC4Week(i,j) && checkHC7(matrixsol, j, i, k)) {
-                        matrixsol[j][i] = k + 1;
+                for (int k = 1; k <= shift.length; k++){
+                    if (checkHC2(matrixsol, i, k, j) && checkHC7(matrixsol, j, i, k) && checkHC5(matrixsol, j, k, i) && checkHC3(matrixsol, j, i, k)) {
+                        matrixsol[j][i] = k;
                         break;
                     }
                 }
             }
         }
 
+        //PRINT SOLUSI
         for (int i = 0; i < matrixsol.length; i++) {
             for (int j = 0; j < matrixsol[i].length; j++) {
                 System.out.print(matrixsol[i][j] + " ");
             }
             System.out.println();
         }
-//        for (int i = 0; i < shiftx.length ; i++) {
-//            double total = shiftx[i].getMonday() + shiftx[i].getSunday() + shiftx[i].getTuesday() +
-//                    shiftx[i].getThursday() + shiftx[i].getWednesday() + shiftx[i].getFriday() + shiftx[i].getSaturday();
-//            System.out.println(total);
-//        }
 
     }
 
+    private static int Random(int min, int max) {
+
+        if (min >= max) {
+            throw new IllegalArgumentException("max must be greater than min");
+        }
+
+        Random r = new Random();
+        return r.nextInt((max - min) + 1) + min;
+    }
+
+    public static boolean checkHC5 (int solution [][], int employee, int shift, int day){
+        if(day==0)
+            return true;
+        if(day % 7 == 5 || day % 7 == 6) {
+            for (int i = 0; i < noPairWeekend.length; i++) {
+                if(solution[employee][day-1] == noPairWeekend[i][0] && shift == noPairWeekend[i][1])
+                    return false;
+                if (day < (7*6)-1)
+                    if(solution[employee][day+1] == noPairWeekend[i][1] && shift == noPairWeekend[i][0])
+                        return false;
+            }
+        }
+        if (day % 7 == 0 || day % 7 == 1 || day % 7 == 2 || day % 7 == 3 || day % 7 == 4) {
+            for (int i = 0; i < noPairWeekday.length; i++) {
+                if (solution[employee][day-1] == noPairWeekday[i][0] && shift == noPairWeekday[i][1])
+                    return false;
+                if (day < (7*6)-1)
+                    if(solution[employee][day+1] == noPairWeekday[i][1] && shift == noPairWeekday[i][0])
+                        return false;
+            }
+        }
+        return true;
+    }
+
     public static boolean checkHC3 (int solution [][], int employee, int day, int shift){
-        double limit = 0;
-        int week = day/7;
+        double [] avg = new double[emp.length];
+        workingHours = 0;
+
+        for (int i = 0; i < 42; i++) {
+            if (solution[employee][i] != 0){
+                if (day % 7 == 0)
+                    workingHours += shiftx[solution[employee][i]-1].getMonday();
+                if (day % 7 == 1)
+                    workingHours += shiftx[solution[employee][i]-1].getTuesday();
+                if (day % 7 == 2)
+                    workingHours += shiftx[solution[employee][i]-1].getWednesday();
+                if (day % 7 == 3)
+                    workingHours += shiftx[solution[employee][i]-1].getThursday();
+                if (day % 7 == 4)
+                    workingHours += shiftx[solution[employee][i]-1].getFriday();
+                if (day % 7 == 5)
+                    workingHours += shiftx[solution[employee][i]-1].getSaturday();
+                if (day % 7 == 6)
+                    workingHours += shiftx[solution[employee][i]-1].getSunday();
+            }
+        }
+        avg[employee] = workingHours;
+        System.out.println(Arrays.toString(avg));
 
 
 
@@ -127,7 +347,7 @@ public class Schedule {
     }
 
     public static boolean checkHC7 (int solution [][], int employee,  int day, int shift){
-        double workingHours = 0;
+        workingHours = 0;
         int week = day/7;
 
         for (int i = week * 7; i < (week+1)*7; i++) {
@@ -148,36 +368,27 @@ public class Schedule {
                     workingHours += shiftx[solution[employee][i]-1].getSunday();
             }
         }
-        if (workingHours + shiftx[shift].getMonday() <= hard.getHc7())
+        if (workingHours + shiftx[shift-1].getMonday() <= hard.getHc7())
             return true;
-        if (workingHours + shiftx[shift].getTuesday() <= hard.getHc7())
+        if (workingHours + shiftx[shift-1].getTuesday() <= hard.getHc7())
             return true;
-        if (workingHours + shiftx[shift].getWednesday() <= hard.getHc7())
+        if (workingHours + shiftx[shift-1].getWednesday() <= hard.getHc7())
             return true;
-        if (workingHours + shiftx[shift].getThursday() <= hard.getHc7())
+        if (workingHours + shiftx[shift-1].getThursday() <= hard.getHc7())
             return true;
-        if (workingHours + shiftx[shift].getFriday() <= hard.getHc7())
+        if (workingHours + shiftx[shift-1].getFriday() <= hard.getHc7())
             return true;
-        if (workingHours + shiftx[shift].getSaturday() <= hard.getHc7())
+        if (workingHours + shiftx[shift-1].getSaturday() <= hard.getHc7())
             return true;
-        if (workingHours + shiftx[shift].getSunday() <= hard.getHc7())
+        if (workingHours + shiftx[shift-1].getSunday() <= hard.getHc7())
             return true;
-
-
-//        double rata = 0;
-//        for (int i = 0; i < emp.length; i++) {
-//            rata = workingHours/6;
-//            System.out.println(rata);
-//            System.out.println(workingHours);
-//        }
-
         return false;
     }
 
     public static int needs (int [][] solution, int shift, int day){
         int count = 0;
         for (int i = 0; i < solution.length; i++) {
-            if (solution[i][day] == shift+1)
+            if (solution[i][day] == shift)
                 count++;
         }
         return count;
@@ -185,31 +396,31 @@ public class Schedule {
 
     public static boolean checkHC2(int [][] solution, int day, int shift, int employee){
         if (day % 7 == 0)
-            if (needs(solution, shift, day) < plan[shift].getMonday())
+            if (needs(solution, shift, day) < plan[shift-1].getMonday())
                 return true;
         if (day % 7 == 1)
-            if (needs(solution, shift, day) < plan[shift].getTuesday())
+            if (needs(solution, shift, day) < plan[shift-1].getTuesday())
                 return true;
         if (day % 7 == 2)
-            if (needs(solution, shift, day) < plan[shift].getWednesday())
+            if (needs(solution, shift, day) < plan[shift-1].getWednesday())
                 return true;
         if (day % 7 == 3)
-            if (needs(solution, shift, day) < plan[shift].getThursday())
+            if (needs(solution, shift, day) < plan[shift-1].getThursday())
                 return true;
         if (day % 7 == 4)
-            if (needs(solution, shift, day) < plan[shift].getFriday())
+            if (needs(solution, shift, day) < plan[shift-1].getFriday())
                 return true;
         if (day % 7 == 5)
-            if (needs(solution, shift, day) < plan[shift].getSaturday())
+            if (needs(solution, shift, day) < plan[shift-1].getSaturday())
                 return true;
         if (day % 7 == 6)
-            if (needs(solution, shift, day) < plan[shift].getSunday())
+            if (needs(solution, shift, day) < plan[shift-1].getSunday())
                 return true;
         return false;
     }
 
     public static boolean checkHC4Competence (int shift, int employee){
-        if(shiftx[shift].getCompetence().equals("A") && emp[employee].getCompetence().equals(""))
+        if(shiftx[shift-1].getCompetence().equals("A") && emp[employee].getCompetence().equals(""))
             return false;
         return true;
     }
