@@ -1,5 +1,9 @@
+import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.*;
+
+import javax.sound.midi.Soundbank;
+import javax.xml.bind.SchemaOutputResolver;
 import java.io.File;
 import java.io.IOException;
 
@@ -8,9 +12,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.Random;
+import java.util.*;
 
 public class Schedule {
     static Employee[] emp;
@@ -20,17 +22,19 @@ public class Schedule {
     static Row row;
     static int [][] noPairWeekday;
     static int [][] noPairWeekend;
+    static int [][] week;
     static double workingHours;
 
     public static final String XLSX_FILE_PATH =
             "D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\OpTur7.xls";
+
+//    static int planningHorizon = Collections.max(Arrays.asList())
 
     public static void main(String[] args) throws IOException, InvalidFormatException, ParseException {
         String[][] employee = employees().clone();
         String[][] shift = shifts().clone();
         String[][] manpower = manpower().clone();
         String[] constraint = hardconstraint().clone();
-
 
         //OBJEK EMPLOYEE
         String[][] weekend = new String[employee.length][];
@@ -41,7 +45,7 @@ public class Schedule {
             if (kanan < weekend[i].length)
                 kanan = weekend[i].length;
         }
-        int[][] week = new int[weekend.length][kanan];
+        week = new int[weekend.length][kanan];
         for (int i = 0; i < weekend.length; i++){
             for (int j = 0; j < weekend[i].length; j++){
                 week[i][j] = Integer.parseInt(weekend[i][j]);
@@ -57,7 +61,6 @@ public class Schedule {
 //            System.out.println(Arrays.toString(week[i]));
         }
 
-
         //OBJEK SHIFT
         DateFormat time = new SimpleDateFormat("hh:mm");
         LocalTime[][] times = new LocalTime[shift.length][2];
@@ -70,8 +73,6 @@ public class Schedule {
             LocalTime finishx = finish.toLocalTime();
             times[i][0] = startx;
             times[i][1] = finishx;
-//            LocalTime total = finishx.minusHours(startx.getHour()).minusMinutes(startx.getMinute());
-//            System.out.println(total);
         }
 
         shiftx = new Shift[shift.length];
@@ -79,7 +80,6 @@ public class Schedule {
             shiftx[i]= new Shift(shift[i][0], shift[i][1], shift[i][2], shift[i][3], shift[i][4], shift[i][5],
                     shift[i][6], shift[i][7], shift[i][8], shift[i][9], times[i][0], times[i][1],
                     shift[i][14]);
-            System.out.println(shiftx[i].getSaturday() + " " + shiftx[i].getMonday());
         }
 
         //OBJEK MANPOWER
@@ -91,6 +91,7 @@ public class Schedule {
 
         //OBJEK CONSTRAINT
         hard = new Constraint(constraint);
+        hard.setHc3();
         hard.setHc7();
         hard.setHc5a();
         hard.setHc5b();
@@ -245,9 +246,9 @@ public class Schedule {
         }
 
         //ASSIGN WEEKEND TERLEBIH DAHULLU
-        int [][] matrixsol = new int[employee.length][42];
+        int [][] matrixsol = new int[employee.length][planningHorizon(week)*7];
 
-        for (int i = 0; i < 42; i++) {
+        for (int i = 0; i < planningHorizon(week)*7; i++) {
             if (i%7 == 5 || i%7 == 6) {
             for (int j = 0; j < employee.length; j++) {
                 for (int k = 1; k <= shift.length; k++) {
@@ -261,10 +262,11 @@ public class Schedule {
         }
 
         //ASSIGN WEEKDAYS
-        for (int i = 0; i < 42; i++) {
+        for (int i = 0; i < planningHorizon(week)*7; i++) {
             for (int j = 0; j < employee.length; j++){
                 for (int k = 1; k <= shift.length; k++){
-                    if (checkHC2(matrixsol, i, k, j) && checkHC7(matrixsol, j, i, k) && checkHC5(matrixsol, j, k, i) && checkHC3(matrixsol, j, i, k)) {
+                    if (checkHC2(matrixsol, i, k, j) && checkHC7(matrixsol, j, i, k)
+                            && checkHC5(matrixsol, j, k, i)) {
                         matrixsol[j][i] = k;
                         break;
                     }
@@ -273,33 +275,183 @@ public class Schedule {
         }
 
         //PRINT SOLUSI
+//        for (int i = 0; i < matrixsol.length; i++) {
+//            for (int j = 0; j < matrixsol[i].length; j++) {
+//                System.out.print(matrixsol[i][j] + " ");
+//            }
+//            System.out.println();
+//        }
+        int [][] matrixsolTemp = new int [matrixsol.length][];
+        for (int i = 0; i < matrixsol.length; i++) {
+            matrixsolTemp[i] = matrixsol[i].clone();
+        }
+
+        //COBA SOLVE
+//        for (int iterasi = 0; iterasi < 50000; iterasi++) {
+        do {
+            threeExchange(matrixsolTemp);
+            if (checkRandomShift(matrixsolTemp)) {
+                for (int i = 0; i < matrixsolTemp.length; i++) {
+                    for (int j = 0; j < matrixsolTemp[i].length; j++) {
+                        matrixsol[i][j] = matrixsolTemp[i][j];
+                    }
+                }
+                System.out.println("benar");
+            }
+            else {
+                for (int i = 0; i < matrixsolTemp.length; i++) {
+                    for (int j = 0; j < matrixsolTemp[i].length; j++) {
+                        matrixsolTemp[i][j] = matrixsol[i][j];
+                    }
+                }
+                System.out.println("salah");
+            }
+        } while (validHC3(matrixsol) == false);
+
+//        threeExchange(matrixsolTemp);
+//            if (checkRandomShift(matrixsolTemp)) {
+//                for (int i = 0; i < matrixsolTemp.length; i++) {
+//                    for (int j = 0; j < matrixsolTemp[i].length; j++) {
+//                        matrixsol[i][j] = matrixsolTemp[i][j];
+//                    }
+//                }
+//                System.out.println("benar");
+//            }
+//            else {
+//                for (int i = 0; i < matrixsolTemp.length; i++) {
+//                    for (int j = 0; j < matrixsolTemp[i].length; j++) {
+//                        matrixsolTemp[i][j] = matrixsol[i][j];
+//                    }
+//                }
+//                System.out.println("salah");
+//            }
+
+//        System.out.println("SOL");
         for (int i = 0; i < matrixsol.length; i++) {
             for (int j = 0; j < matrixsol[i].length; j++) {
                 System.out.print(matrixsol[i][j] + " ");
             }
             System.out.println();
         }
-
+//        //CEK SUMHOURS
+//        double[] hours = sumHours(matrixsol, 2).clone();
+//        for (int i = 0; i < hours.length; i++) {
+//            System.out.println(hours[i]);
+//        }
+//        System.out.println(Arrays.toString(avgHours(matrixsol, 6)));
+//        for(int i=0; i<42; i++)
+//            for(int j=1; j<=6; j++)
     }
 
-    private static int Random(int min, int max) {
 
-        if (min >= max) {
-            throw new IllegalArgumentException("max must be greater than min");
+    private static int random (int number) {
+        Random random = new Random();
+        return random.nextInt(number);
+    }
+
+    public static boolean checkRandomShift(int [][] solution) {
+        if (validHC2(solution) && validHC4Competence(solution) && validHC5(solution) && validHC7(solution))
+            return true;
+        else
+            return false;
+    }
+
+    public static int [][] twoExchange(int [][] solution) {
+        int [][] matrixsolTemp = solution;
+        int shift1; int shift2;
+
+        int randomEmp1 = random(solution.length);
+        int randomEmp2 = random(solution.length);
+        while (randomEmp2 == randomEmp1) {
+            randomEmp2 = random(solution.length);
+        }
+        int randomDay = random(planningHorizon(week)*7);
+        while (randomDay % 7 == 5 || randomDay % 7 == 6) {
+            randomDay = random(planningHorizon(week) * 7);
         }
 
-        Random r = new Random();
-        return r.nextInt((max - min) + 1) + min;
+        shift1 = solution[randomEmp1][randomDay];
+        shift2 = solution[randomEmp2][randomDay];
+        matrixsolTemp[randomEmp1][randomDay] = shift2;
+        matrixsolTemp[randomEmp2][randomDay] = shift1;
+
+        return matrixsolTemp;
     }
 
-    public static boolean checkHC5 (int solution [][], int employee, int shift, int day){
+    public static int [][] threeExchange(int [][] solution) {
+        int [][] matrixsolTemp = solution;
+        int shift1; int shift2; int shift3;
+        int randomEmp1; int randomEmp2; int randomEmp3;
+
+        do {
+            randomEmp1 = random(solution.length);
+            randomEmp2 = random(solution.length);
+            randomEmp3 = random(solution.length);
+        } while (randomEmp2 == randomEmp1 || randomEmp3 == randomEmp2 || randomEmp1 == randomEmp3);
+
+        int randomDay = random(planningHorizon(week)*7);
+        while (randomDay % 7 == 5 || randomDay % 7 == 6) {
+            randomDay = random(planningHorizon(week) * 7);
+        }
+
+        shift1 = solution[randomEmp1][randomDay];
+        shift2 = solution[randomEmp2][randomDay];
+        shift3 = solution[randomEmp3][randomDay];
+
+        matrixsolTemp[randomEmp1][randomDay] = shift2;
+        matrixsolTemp[randomEmp2][randomDay] = shift3;
+        matrixsolTemp[randomEmp3][randomDay] = shift1;
+
+        return matrixsolTemp;
+    }
+
+    public static int [][] doubleExchange(int [][] solution) {
+        int [][] matrixsolTemp = solution;
+        int shift1; int shift2;
+
+        int randomEmp1 = random(solution.length);
+        int randomEmp2 = random(solution.length);
+        while (randomEmp2 == randomEmp1) {
+            randomEmp2 = random(solution.length);
+        }
+        int randomDay1 = random(planningHorizon(week)*7);
+        int randomDay2 = random(planningHorizon(week)*7);
+        if (randomDay1 % 7 == 5 || randomDay1 % 7 == 6 || randomDay2 % 7 == 5 || randomDay2 % 7 == 6) {
+            randomDay1 = random(planningHorizon(week) * 7);
+            randomDay2 = random(planningHorizon(week) * 7);
+        }
+
+        shift1 = solution[randomEmp1][randomDay1];
+        shift2 = solution[randomEmp2][randomDay2];
+        matrixsolTemp[randomEmp1][randomDay1] = shift2;
+        matrixsolTemp[randomEmp2][randomDay2] = shift1;
+
+        return matrixsolTemp;
+    }
+
+    public static int planningHorizon(int[][] arr) {
+        if ((arr.length == 0)||(arr[0].length == 0)) {
+            throw new IllegalArgumentException("Empty array");
+        }
+        int max = arr[0][0];
+        for (int i = 0; i < arr.length; i++) {
+            for (int j = 0; j < arr[i].length; j++) {
+                if (arr[i][j] > max) {
+                    max = arr[i][j];
+                }
+            }
+        }
+        return max;
+    }
+
+    public static boolean checkHC5 (int [][] solution, int employee, int shift, int day){
         if(day==0)
             return true;
         if(day % 7 == 5 || day % 7 == 6) {
             for (int i = 0; i < noPairWeekend.length; i++) {
                 if(solution[employee][day-1] == noPairWeekend[i][0] && shift == noPairWeekend[i][1])
                     return false;
-                if (day < (7*6)-1)
+                if (day < (planningHorizon(week)*7)-1)
                     if(solution[employee][day+1] == noPairWeekend[i][1] && shift == noPairWeekend[i][0])
                         return false;
             }
@@ -308,7 +460,7 @@ public class Schedule {
             for (int i = 0; i < noPairWeekday.length; i++) {
                 if (solution[employee][day-1] == noPairWeekday[i][0] && shift == noPairWeekday[i][1])
                     return false;
-                if (day < (7*6)-1)
+                if (day < (planningHorizon(week)*7)-1)
                     if(solution[employee][day+1] == noPairWeekday[i][1] && shift == noPairWeekday[i][0])
                         return false;
             }
@@ -316,34 +468,86 @@ public class Schedule {
         return true;
     }
 
-    public static boolean checkHC3 (int solution [][], int employee, int day, int shift){
-        double [] avg = new double[emp.length];
-        workingHours = 0;
-
-        for (int i = 0; i < 42; i++) {
-            if (solution[employee][i] != 0){
-                if (day % 7 == 0)
-                    workingHours += shiftx[solution[employee][i]-1].getMonday();
-                if (day % 7 == 1)
-                    workingHours += shiftx[solution[employee][i]-1].getTuesday();
-                if (day % 7 == 2)
-                    workingHours += shiftx[solution[employee][i]-1].getWednesday();
-                if (day % 7 == 3)
-                    workingHours += shiftx[solution[employee][i]-1].getThursday();
-                if (day % 7 == 4)
-                    workingHours += shiftx[solution[employee][i]-1].getFriday();
-                if (day % 7 == 5)
-                    workingHours += shiftx[solution[employee][i]-1].getSaturday();
-                if (day % 7 == 6)
-                    workingHours += shiftx[solution[employee][i]-1].getSunday();
+    public static boolean validHC5 (int [][] solution) {
+        for (int i = 0; i < planningHorizon(week)*7; i++) {
+            for (int j = 0; j < emp.length; j++) {
+                if (i % 7 == 5 || i % 7 == 6) {
+                    for (int k = 0; k < noPairWeekday.length; k++) {
+                        if (i < (planningHorizon(week)*7) - 1)
+                            if (solution[j][i] == noPairWeekday[k][0] && solution[j][(i+1)] == noPairWeekday[k][1])
+                                return false;
+                    }
+                }
+                else {
+                    for (int k = 0; k < noPairWeekend.length; k++) {
+                        if (i < (planningHorizon(week)*7) - 1)
+                            if (solution[j][i] == noPairWeekend[k][0] && solution[j][(i+1)] ==  noPairWeekend[k][1])
+                                return false;
+                    }
+                }
             }
         }
-        avg[employee] = workingHours;
-        System.out.println(Arrays.toString(avg));
+        return true;
+    }
 
+    public static double[] sumHours (int[][] solution, int week){
+        double [] weekHours = new double[emp.length];
+        workingHours = 0;
 
+        for (int i = 0; i < emp.length; i++) {
+            for (int j = week*7; j < (week+1)*7; j++) {
+                if (solution [i][j] != 0) {
+                    if (j % 7 == 0)
+                        weekHours[i] = weekHours [i] + shiftx[solution[i][j]-1].getMonday();
+                    if (j % 7 == 1)
+                        weekHours[i] = weekHours [i] + shiftx[solution[i][j]-1].getTuesday();
+                    if (j % 7 == 2)
+                        weekHours[i] = weekHours [i] + shiftx[solution[i][j]-1].getWednesday();
+                    if (j % 7 == 3)
+                        weekHours[i] = weekHours [i] + shiftx[solution[i][j]-1].getThursday();
+                    if (j % 7 == 4)
+                        weekHours[i] = weekHours [i] + shiftx[solution[i][j]-1].getFriday();
+                    if (j % 7 == 5)
+                        weekHours[i] = weekHours [i] + shiftx[solution[i][j]-1].getSaturday();
+                    if (j % 7 == 6)
+                        weekHours[i] = weekHours [i] + shiftx[solution[i][j]-1].getSaturday();
+                }
+            }
+        }
+        return weekHours;
+    }
 
-        return false;
+    public static double [] avgHours (int [][] solution, int week){
+        double [] avg = new double[emp.length];
+
+        for (int i = 0; i < week; i++) {
+            for (int j = 0; j < emp.length; j++) {
+                avg [j] = avg[j] + sumHours(solution, i)[j];
+            }
+        }
+        for (int i = 0; i < emp.length; i++) {
+            avg [i] = (avg[i]/week);
+        }
+        return avg;
+    }
+
+    public static boolean validHC3 (int [][] solution){
+        double [] upperLimit = new double[emp.length];
+        double [] lowerLimit = new double[emp.length];
+        for (int i=0; i<emp.length; i++) {
+            upperLimit[i] = emp[i].getHours() + emp[i].getHours()*hard.getHc3();
+            lowerLimit[i] = emp[i].getHours() - emp[i].getHours()*hard.getHc3();
+        }
+
+        for (int i = 0; i < emp.length ; i++) {
+            for (int j = 0; j < planningHorizon(week); j++) {
+                if (avgHours(solution, j)[i] > upperLimit[i])
+                    return false;
+                if (avgHours(solution, j)[i] < lowerLimit[i])
+                    return false;
+            }
+        }
+        return true;
     }
 
     public static boolean checkHC7 (int solution [][], int employee,  int day, int shift){
@@ -353,19 +557,19 @@ public class Schedule {
         for (int i = week * 7; i < (week+1)*7; i++) {
             if (solution[employee][i] != 0){
                 if (day % 7 == 0)
-                    workingHours += shiftx[solution[employee][i]-1].getMonday();
+                    workingHours += shiftx[solution[employee][i] - 1].getMonday();
                 if (day % 7 == 1)
-                    workingHours += shiftx[solution[employee][i]-1].getTuesday();
+                    workingHours += shiftx[solution[employee][i] - 1].getTuesday();
                 if (day % 7 == 2)
-                    workingHours += shiftx[solution[employee][i]-1].getWednesday();
+                    workingHours += shiftx[solution[employee][i] - 1].getWednesday();
                 if (day % 7 == 3)
-                    workingHours += shiftx[solution[employee][i]-1].getThursday();
+                    workingHours += shiftx[solution[employee][i] - 1].getThursday();
                 if (day % 7 == 4)
-                    workingHours += shiftx[solution[employee][i]-1].getFriday();
+                    workingHours += shiftx[solution[employee][i] - 1].getFriday();
                 if (day % 7 == 5)
-                    workingHours += shiftx[solution[employee][i]-1].getSaturday();
+                    workingHours += shiftx[solution[employee][i] - 1].getSaturday();
                 if (day % 7 == 6)
-                    workingHours += shiftx[solution[employee][i]-1].getSunday();
+                    workingHours += shiftx[solution[employee][i] - 1].getSunday();
             }
         }
         if (workingHours + shiftx[shift-1].getMonday() <= hard.getHc7())
@@ -383,6 +587,16 @@ public class Schedule {
         if (workingHours + shiftx[shift-1].getSunday() <= hard.getHc7())
             return true;
         return false;
+    }
+
+    public static boolean validHC7 (int [][] solution) {
+        for (int i = 0; i < planningHorizon(week); i++) {
+            for (int j = 0; j < emp.length; j++) {
+                if(sumHours(solution,i)[j] > hard.getHc7())
+                    return false;
+            }
+        }
+        return true;
     }
 
     public static int needs (int [][] solution, int shift, int day){
@@ -419,13 +633,54 @@ public class Schedule {
         return false;
     }
 
-    public static boolean checkHC4Competence (int shift, int employee){
+    public static boolean validHC2 (int [][] solution) {
+        for (int i = 0; i < planningHorizon(week)*7; i++) {
+            for (int j = 0; j < shiftx.length; j++) {
+                if (i % 7 == 0)
+                    if (plan[j].getMonday() != needs(solution, j+1, i)) {
+                        return false;
+                    }
+                if (i % 7 == 1)
+                    if (plan[j].getTuesday() != needs(solution, j+1, i))
+                        return false;
+                if (i % 7 == 2)
+                    if (plan[j].getWednesday() != needs(solution, j+1, i))
+                        return false;
+                if (i % 7 == 3)
+                    if (plan[j].getThursday() != needs(solution, j+1, i))
+                        return false;
+                if (i % 7 == 4)
+                    if (plan[j].getFriday() != needs(solution, j+1, i))
+                        return false;
+                if (i % 7 == 5)
+                    if (plan[j].getSaturday() != needs(solution, j+1, i))
+                        return false;
+                if (i % 7 == 6)
+                    if (plan[j].getSunday() != needs(solution, j+1, i))
+                        return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean checkHC4Competence (int shift, int employee) {
         if(shiftx[shift-1].getCompetence().equals("A") && emp[employee].getCompetence().equals(""))
             return false;
         return true;
     }
 
-    public static boolean checkHC4Week (int day, int employee){
+    public static boolean validHC4Competence (int[][] solution) {
+        for (int i = 0; i < solution.length; i++) {
+            for (int j = 0; j < solution[i].length; j++) {
+                if (solution[i][j] != 0)
+                    if (shiftx[solution[i][j]-1].getCompetence().equals("A") && emp[i].getCompetence().equals(""))
+                        return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean checkHC4Week (int day, int employee) {
         if(day%7 == 5 || day%7 == 6) {
             for (int i = 0; i < emp[employee].getWeek().length; i++) {
                 if (day / 7 == emp[employee].getWeek()[i] - 1)
@@ -435,7 +690,17 @@ public class Schedule {
         return true;
     }
 
-
+    public static boolean validHC4Week (int [][] solution, int employee) {
+        for (int i = 0; i < planningHorizon(week)*7; i++) {
+            if(i % 7 == 5 || i % 7 == 6)
+                if (solution[employee][i] != 0)
+                    for (int j = 0; j < emp[employee].getWeek().length; j++) {
+                        if (i / 7 != emp[employee].getWeek()[j] - 1)
+                            return false;
+                    }return true;
+            }
+        return true;
+    }
 
     public static String[][] employees() throws IOException, InvalidFormatException {
         Workbook workbook = WorkbookFactory.create(new File(XLSX_FILE_PATH));
