@@ -1,8 +1,7 @@
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.*;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 
 import java.sql.Time;
 import java.text.DateFormat;
@@ -307,7 +306,8 @@ public class Schedule {
         if(choice==1)
             initialSolution();
         if(choice==2)
-            System.out.println("belum");
+            optimization();
+
     }
 
     public static void initialSolution() throws IOException {
@@ -404,6 +404,9 @@ public class Schedule {
             }
         }
 
+        int count = countHC6(matrixsol);
+        System.out.println(count);
+
         int[][] matrixsolTemp =  new int[emp.length][planningHorizon[file-1]*7];
         copyArray(matrixsol, matrixsolTemp);
         double solutionHour = diffHour(matrixsol);
@@ -427,26 +430,22 @@ public class Schedule {
                             copyArray(matrixsolTemp, matrixsol);
                             solutionHour = diffHour(matrixsolTemp);
                         }
-                        else
-                        {
+                        else {
                             copyArray(matrixsol, matrixsolTemp);
                         }
                     }
-                    else
-                    {
+                    else {
                         copyArray(matrixsol, matrixsolTemp);
                     }
                 }
-                else
-                {
+                else {
                     copyArray(matrixsol, matrixsolTemp);
                 }
             }
-            else
-            {
+            else {
                 copyArray(matrixsol, matrixsolTemp);
             }
-//            System.out.println("Iterasi ke " + (i+1) + " " + solutionHour);
+            System.out.println("Iterasi ke " + (i+1) + " " + solutionHour +  " hc6 " + countHC6(matrixsol));
         }
 
         if(validHC2(matrixsol))
@@ -482,9 +481,11 @@ public class Schedule {
                                         if (validHC4Competence(matrixsolTemp2)) {
                                             if (validHC5(matrixsolTemp2)) {
 //                                                if (validHC7(matrixsolTemp2)) {
+                                                if (countHC6(matrixsol) <= count) {
+                                                    count = countHC6(matrixsol);
                                                     copyArray(matrixsolTemp2, matrixsol);
-//                                                } else
-//                                                    copyArray(matrixsol, matrixsolTemp2);
+                                                } else
+                                                    copyArray(matrixsol, matrixsolTemp2);
                                             } else
                                                 copyArray(matrixsol, matrixsolTemp2);
                                         } else
@@ -513,11 +514,45 @@ public class Schedule {
         if(validAll(matrixsol)==0) {
             Solution sol = new Solution(matrixsol);
             print(matrixsol);
-            System.out.println("penalti = " + sol.countPenalty());
+            System.out.println("penalty = " + sol.countPenalty());
+            System.out.println("Do you want to save?\n 1. Yes\n 2. No");
+            int save = input.nextInt();
+            if (save ==  1) {
+                saveSolution(matrixsol, file);
+                saveSolutionShiftName(matrixsol, file);
+            }
         }
         else {
             System.out.println("HC " + validAll(matrixsol) + " tidak feasible");
+//            print(matrixsol);
+//            Solution sol = new Solution(matrixsol);
+//            System.out.println("penalty = " + sol.countPenalty());
+//            System.out.println("Do you want to save?\n 1. Yes\n 2. No");
+//            int save = input.nextInt();
+//            if (save ==  1) {
+//                saveSolution(matrixsol, file);
+//                saveSolutionShiftName(matrixsol, file);
+//            }
         }
+    }
+
+    public static void optimization () throws IOException{
+        int [][] matrixsol = new int [emp.length][planningHorizon[(file-1)] * 7];
+        File file = new File(fileOptimization);
+
+        BufferedReader read = new BufferedReader(new FileReader(file));
+
+        String readline = "";
+        int index = 0;
+        while ((readline = read.readLine()) != null) {
+            String [] tmp = readline.split(" ");
+            for (int i = 0; i < matrixsol[index].length; i++) {
+                matrixsol[index][i] = Integer.parseInt(tmp[i]);
+            } index++;
+        }
+        Solution sol = new Solution(matrixsol);
+        sol.RL_SA();
+//        System.out.println(sol.countPenalty());
     }
 
     public static void print(int[][] cetak)
@@ -585,6 +620,8 @@ public class Schedule {
 
         int randomEmp1 = -1;
         int randomEmp2 = -1;
+//        int randomEmp1 = (int) (Math.random() * emp.length);
+//        int randomEmp2 = (int) (Math.random() * emp.length);
         do {
             randomEmp1 = (int) (Math.random() * emp.length);
         } while (solution[randomEmp1][randomDay]==0);
@@ -712,7 +749,6 @@ public class Schedule {
                     if(checkHC7(solution, employee, day, shift))
                         if(checkHC5(solution, employee, shift, day))
                             return true;
-        //System.out.println("Error di ok2");
         return false;
     }
 
@@ -841,7 +877,7 @@ public class Schedule {
         return true;
     }
 
-    public static boolean[] checkFreeWeekend(int[][] solution, int week){
+    public static boolean[] checkFreeWeekly(int[][] solution, int week){
         boolean[] isOk = new boolean[emp.length];
         for(int  i=0; i<isOk.length; i++)
             isOk[i] = false;
@@ -932,7 +968,7 @@ public class Schedule {
     public static boolean validHC6 (int [][] solution) {
         boolean [][] check = new boolean[emp.length][planningHorizon[file-1]];
         for (int i = 0; i < planningHorizon[file-1]; i++) {
-            boolean [] check2 = checkFreeWeekend(solution, i).clone(); {
+            boolean [] check2 = checkFreeWeekly(solution, i).clone(); {
                 for (int j = 0; j < check2.length; j++) {
                     check[j][i] = check2[j];
                 }
@@ -949,6 +985,27 @@ public class Schedule {
         return true;
     }
 
+    public static int countHC6 (int [][] solution) {
+        int count = 0;
+        boolean [][] check = new boolean[emp.length][planningHorizon[file-1]];
+        for (int i = 0; i < planningHorizon[file-1]; i++) {
+            boolean [] check2 = checkFreeWeekly(solution, i).clone(); {
+                for (int j = 0; j < check2.length; j++) {
+                    check[j][i] = check2[j];
+                }
+            }
+        }
+
+        for (int i = 0; i < check.length; i++) {
+            for (int j = 0; j < check[i].length; j++) {
+                if (check[i][j] == false) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
     public static boolean validHC7 (int [][] solution) {
         for(int i=0; i<planningHorizon[file-1]*7; i++)
         {
@@ -959,6 +1016,29 @@ public class Schedule {
             }
         }
         return true;
+    }
+
+    public static void saveSolution (int [][] solution, int number) throws IOException {
+        FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTur" + file + ".txt", false);
+        for (int i = 0; i < solution.length; i++) {
+            for (int j = 0; j < solution[i].length; j++) {
+                writer.write(solution[i][j] + " ");
+            } writer.write("\n");
+        }
+        writer.close();
+    }
+
+    public static void saveSolutionShiftName (int [][] solution, int number) throws IOException {
+        FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTur" + file + "NameShift.txt", false);
+        for (int i = 0; i < solution.length; i++) {
+            for (int j = 0; j < solution[i].length; j++) {
+                if (solution[i][j] != 0)
+                    writer.write(shiftx[solution[i][j]-1].getName() + " ");
+                else
+                    writer.write("<Free>" + " ");
+            } writer.write("\n");
+        }
+        writer.close();
     }
 
     public static String[][] employees() throws IOException, InvalidFormatException {
