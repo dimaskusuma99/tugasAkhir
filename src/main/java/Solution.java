@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.util.LinkedList;
 
 public class Solution {
@@ -309,62 +310,104 @@ public class Solution {
         int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
         int [][] newSolution = new int [solution.length][day];
         Schedule.copyArray(solution, newSolution);
-        int i = 0;
-        while (Schedule.validAll(solution) != 0) {
-            i++;
-            int llh = (int) (Math.random() * 3);
-            switch (llh) {
-                case 0 :
-                    Schedule.twoExchange(solution);
-                case 1 :
-                    Schedule.twoExchange(solution);
-                case 2 :
-                    Schedule.doubleTwoExchange(solution);
+        double solutionHour = Schedule.diffHour(solution);
+        int count = Schedule.countHC6(solution);
+        for(int i =0; i<50000; i++)
+        {
+            int llh = (int) (Math.random()*3);
+            if(llh == 0)
+                Schedule.twoExchange(newSolution);
+            if(llh == 1)
+                Schedule.threeExchange(newSolution);
+            if(llh == 2)
+                Schedule.doubleTwoExchange(newSolution);
+            if(Schedule.validHC4Competence(newSolution))
+            {
+                if(Schedule.validHC5(newSolution))
+                {
+                    if(Schedule.validHC7(newSolution))
+                    {
+                        if(Schedule.diffHour(newSolution)<=solutionHour)
+                        {
+                            if (Schedule.countHC6(newSolution) <= count) {
+                                Schedule.copyArray(newSolution, solution);
+                                count = Schedule.countHC6(newSolution);
+                                solutionHour = Schedule.diffHour(newSolution);
+                            }
+                            else {
+                                Schedule.copyArray(solution, newSolution);
+                            }
+                        }
+                        else {
+                            Schedule.copyArray(solution, newSolution);
+                        }
+                    }
+                    else {
+                        Schedule.copyArray(solution, newSolution);
+                    }
+                }
+                else {
+                    Schedule.copyArray(solution, newSolution);
+                }
             }
-            System.out.println("iterasi ke " + i + "penalti " + countPenalty());
+            else {
+                Schedule.copyArray(solution, newSolution);
+            }
+            System.out.println("Iterasi ke " + (i+1) + " " + solutionHour +  " hc6 " + Schedule.countHC6(solution));
         }
     }
 
-    public void hillClimbing () {
-        int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
-        int [][] newSolution = new int [solution.length][day];
-        double penalty = countPenalty();
-        Schedule.copyArray(solution, newSolution);
-        double [][] plot = new double[101][2];
-        int p = 0;
-        for (int i = 0; i < 1000000; i++) {
-            int llh = (int) (Math.random() * 3);
-            switch (llh) {
-                case 0 :
-                    Schedule.twoExchange(solution);
-                case 1 :
-                    Schedule.twoExchange(solution);
-                case 2 :
-                    Schedule.doubleTwoExchange(solution);
-            } if (Schedule.validAll(solution) == 0) {
-                if (countPenalty() <= penalty) {
-                    penalty = countPenalty();
-                    Schedule.copyArray(solution, newSolution);
+    public void hillClimbing () throws IOException {
+        for (int e = 0; e < 9; e++) {
+            int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
+            int[][] newSolution = new int[solution.length][day];
+            int [][] baseSolution = new int [solution.length][day];
+            double penalty = countPenalty();
+            Schedule.copyArray(solution, newSolution);
+            Schedule.copyArray(solution, baseSolution);
+            double[][] plot = new double[101][2];
+            int p = 0;
+            long startTime = System.nanoTime();
+            for (int i = 0; i < 10000; i++) {
+                int llh = (int) (Math.random() * 3);
+                switch (llh) {
+                    case 0:
+                        Schedule.twoExchange(solution);
+                    case 1:
+                        Schedule.twoExchange(solution);
+                    case 2:
+                        Schedule.doubleTwoExchange(solution);
                 }
-                else {
+                if (Schedule.validAll(solution) == 0) {
+                    if (countPenalty() <= penalty) {
+                        penalty = countPenalty();
+                        Schedule.copyArray(solution, newSolution);
+                    } else {
+                        Schedule.copyArray(newSolution, solution);
+                    }
+                } else {
                     Schedule.copyArray(newSolution, solution);
                 }
-            } else {
-                Schedule.copyArray(newSolution, solution);
+                System.out.println("iterasi ke " + (i + 1) + " penalti : " + countPenalty());
+                if ((i + 1) % 10000 == 0) {
+                    plot[p][0] = i + 1;
+                    plot[p][1] = penalty;
+                    p = p + 1;
+                }
             }
-            System.out.println("iterasi ke " + (i+1) + " penalti : " + countPenalty());
-            if (i == 0 || (i+1)%10000 == 0){
-                plot[p][0] = i+1;
-                plot[p][1] = penalty;
-                p = p+1;
-            }
-        }
-        System.out.println(penalty);
-        for (int j = 0; j < plot.length; j++) {
-            for (int k = 0; k < plot[j].length; k++) {
-                System.out.print(plot[j][k] + " ");
-            }
-            System.out.println();
+
+            long endTime = System.nanoTime();
+            long time = (endTime-startTime) / 1000000000;
+            plot [100][0] = time;
+            Schedule.saveOptimation(plot, e);
+            System.out.println(penalty);
+            Schedule.copyArray(baseSolution, solution);
+//            for (int j = 0; j < plot.length; j++) {
+//                for (int k = 1; k < plot[j].length; k++) {
+//                    System.out.print(plot[j][k] + " ");
+//                }
+//                System.out.println();
+//            }
         }
     }
 
@@ -459,231 +502,269 @@ public class Solution {
         System.out.println(bestPenalty);
     }
 
-    public void reinforcementLearning () {
-        int [] score = {500000, 500000, 500000};
-        int score2Exchange = score[0];
-        int score3Exchange = score[1];
-        int scoredoubleExchange = score[2];
-        int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
-        int[][] newSolution = new int[Schedule.emp.length][day];
-        double penalty = countPenalty();
-        double[][] plot = new double[100][4];
-        int p = 0;
-        Schedule.copyArray(solution, newSolution);
-        for (int i = 0; i < 1000000; i++) {
-            if (score2Exchange > score3Exchange && score2Exchange > scoredoubleExchange) {
-                Schedule.twoExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (score2Exchange < 1000) {
-                        score2Exchange = score2Exchange + 100;
-                    } else {
-                        score2Exchange = 1000;
+    public void reinforcementLearning () throws IOException {
+        for (int e = 0; e < 3; e++) {
+            int[] score = {500, 500, 500};
+            int score2Exchange = score[0];
+            int score3Exchange = score[1];
+            int scoredoubleExchange = score[2];
+            int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
+            int[][] newSolution = new int[Schedule.emp.length][day];
+            int[][] baseSolution = new int[Schedule.emp.length][day];
+            double penalty = countPenalty();
+            double[][] plot = new double[101][1];
+            int p = 0;
+            long startTime = System.nanoTime();
+            Schedule.copyArray(solution, newSolution);
+            Schedule.copyArray(solution, baseSolution);
+            for (int i = 0; i < 1000000; i++) {
+                double epsilon = 1 / (Math.sqrt(i));
+                if (Math.random() < epsilon) {
+                    int llh = (int) (Math.random() * 3);
+                    switch (llh) {
+                        case 0:
+                            Schedule.twoExchange(solution);
+                        case 1:
+                            Schedule.threeExchange(solution);
+                        case 2:
+                            Schedule.doubleTwoExchange(solution);
                     }
                 } else {
-                    if (score2Exchange > 0) {
-                        score2Exchange = score2Exchange - 10;
-                    } else {
-                        score2Exchange = 0;
+                    if (score2Exchange > score3Exchange && score2Exchange > scoredoubleExchange) {
+                        Schedule.twoExchange(solution);
+                        if (countPenalty() <= penalty) {
+                            if (score2Exchange < 1000) {
+                                score2Exchange = score2Exchange + 10;
+                            } else {
+                                score2Exchange = 1000;
+                            }
+                        } else {
+                            if (score2Exchange > 0) {
+                                score2Exchange = score2Exchange - 10;
+                            } else {
+                                score2Exchange = 0;
+                            }
+                        }
+                    }
+                    if (score3Exchange > score2Exchange && score3Exchange > scoredoubleExchange) {
+                        Schedule.threeExchange(solution);
+                        if (countPenalty() <= penalty) {
+                            if (score3Exchange < 1000) {
+                                score3Exchange = score3Exchange + 10;
+                            } else {
+                                score3Exchange = 1000;
+                            }
+                        } else {
+                            if (score3Exchange > 0) {
+                                score3Exchange = score3Exchange - 10;
+                            } else {
+                                score3Exchange = 0;
+                            }
+                        }
+                    }
+                    if (scoredoubleExchange > score2Exchange && scoredoubleExchange > score3Exchange) {
+                        Schedule.doubleTwoExchange(solution);
+                        if (countPenalty() <= penalty) {
+                            if (scoredoubleExchange < 1000) {
+                                scoredoubleExchange = scoredoubleExchange + 10;
+                            } else {
+                                scoredoubleExchange = 1000;
+                            }
+                        } else {
+                            if (scoredoubleExchange > 0) {
+                                scoredoubleExchange = scoredoubleExchange - 10;
+                            } else {
+                                scoredoubleExchange = 0;
+                            }
+                        }
+                    }
+                    if (score2Exchange == score3Exchange && score2Exchange == scoredoubleExchange) {
+                        if (Math.random() < 0.3) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (score2Exchange < 1000) {
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.3 && Math.random() < 0.6) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (score3Exchange < 1000) {
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.6) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (scoredoubleExchange < 1000) {
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score2Exchange == scoredoubleExchange && score2Exchange > score3Exchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (score2Exchange < 1000) {
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (scoredoubleExchange < 1000) {
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score2Exchange == score3Exchange && score2Exchange > scoredoubleExchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (score2Exchange < 1000) {
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (score3Exchange < 1000) {
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score3Exchange == scoredoubleExchange && score3Exchange > score2Exchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (score3Exchange < 1000) {
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= penalty) {
+                                if (scoredoubleExchange < 1000) {
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
                     }
                 }
-            } if (score3Exchange > score2Exchange && score3Exchange > scoredoubleExchange) {
-                Schedule.threeExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (score3Exchange < 1000) {
-                        score3Exchange = score3Exchange + 100;
-                    } else {
-                        score3Exchange = 1000;
-                    }
-                } else {
-                    if (score3Exchange > 0) {
-                        score3Exchange = score3Exchange - 10;
-                    } else {
-                        score3Exchange = 0;
-                    }
-                }
-            } if (scoredoubleExchange > score2Exchange && scoredoubleExchange > score3Exchange) {
-                Schedule.doubleTwoExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (scoredoubleExchange < 1000) {
-                        scoredoubleExchange = scoredoubleExchange + 100;
-                    } else {
-                        scoredoubleExchange = 1000;
-                    }
-                } else {
-                    if (scoredoubleExchange > 0) {
-                        scoredoubleExchange = scoredoubleExchange - 10;
-                    } else {
-                        scoredoubleExchange = 0;
-                    }
-                }
-            } if (score2Exchange == score3Exchange && score2Exchange == scoredoubleExchange) {
-                if(Math.random() < 0.3) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.3 && Math.random() < 0.6) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.6) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            } if (score2Exchange == scoredoubleExchange && score2Exchange > score3Exchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            } if (score2Exchange == score3Exchange && score2Exchange > scoredoubleExchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                }
-            } if (score3Exchange == scoredoubleExchange && score3Exchange > score2Exchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            }
 //            System.out.println("2Exchange : " +score2Exchange+ "\t 3Exchange : " +score3Exchange+ "\t double : " +scoredoubleExchange);
-            if (Schedule.validAll(solution) == 0) {
-                if (countPenalty() <= penalty) {
-                    penalty = countPenalty();
-                    Schedule.copyArray(solution, newSolution);
+                if (Schedule.validAll(solution) == 0) {
+                    if (countPenalty() <= penalty) {
+                        penalty = countPenalty();
+                        Schedule.copyArray(solution, newSolution);
+                    } else {
+                        Schedule.copyArray(newSolution, solution);
+                    }
                 } else {
                     Schedule.copyArray(newSolution, solution);
                 }
-            } else {
-                Schedule.copyArray(newSolution, solution);
+
+                System.out.println("iterasi ke " + (i + 1) + " penalti : " + countPenalty());
+//            System.out.println("score2Exchange : " + score2Exchange + " score3Exchange : " + score3Exchange + " double : " + scoredoubleExchange);
+                if ((i + 1) % 10000 == 0) {
+                    plot[p][0] = penalty;
+                    p = p + 1;
+                }
             }
 
-            System.out.println("iterasi ke " + (i+1) + " penalti : " + countPenalty());
-//            System.out.println("score2Exchange : " + score2Exchange + " score3Exchange : " + score3Exchange + " double : " + scoredoubleExchange);
-            if ((i+1)%10000 == 0){
-                plot[p][0] = i+1;
-                plot[p][1] = countPenalty();
-                plot[p][2] = penalty;
-                p = p+1;
-            }
+            long endTime = System.nanoTime();
+            long time = (endTime-startTime) / 1000000000;
+            plot [100][0] = time;
+            Schedule.saveOptimation(plot, e);
+            System.out.println(penalty);
+            Schedule.copyArray(baseSolution, solution);
+
+//            for (int j = 0; j < plot.length; j++) {
+//                for (int k = 0; k < plot[j].length; k++) {
+//                    System.out.print(plot[j][k] + " ");
+//                }
+//                System.out.println();
+//            }
         }
-        System.out.println(score2Exchange);
-        System.out.println(score3Exchange);
-        System.out.println(scoredoubleExchange);
     }
 
     public void simulatedAnnealing () {
@@ -754,259 +835,296 @@ public class Solution {
         }
     }
 
-    public void RL_SA () {
-        int [] score = {500, 500, 500};
-        int score2Exchange = score[0];
-        int score3Exchange = score[1];
-        int scoredoubleExchange = score[2];
-        int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
-        int[][] newSolution = new int[Schedule.emp.length][day];
-        double currPenalty; double bestPenalty;
-        currPenalty = bestPenalty = countPenalty();
-        double TAwal = 10000000;
-        double coolingrate = 0.99995;
-        double diff = 0;
-        double prob = 0;
-        double penalty = countPenalty();
-        double [][] plot = new double[100][4];
-        int p = 0;
-        Schedule.copyArray(solution, newSolution);
-        for (int i = 0; i < 1000000; i++) {
-            if (score2Exchange > score3Exchange && score2Exchange > scoredoubleExchange) {
-                Schedule.twoExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (score2Exchange < 1000) {
-                        score2Exchange = score2Exchange + 100;
-                    } else {
-                        score2Exchange = 1000;
+    public void RL_SA () throws IOException {
+        for (int e = 0; e < 3; e++) {
+            int[] score = {500, 500, 500};
+            int score2Exchange = score[0];
+            int score3Exchange = score[1];
+            int scoredoubleExchange = score[2];
+            int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
+            int[][] newSolution = new int[Schedule.emp.length][day];
+            int[][] baseSolution = new int[Schedule.emp.length][day];
+            double currPenalty;
+            double bestPenalty;
+            currPenalty = bestPenalty = countPenalty();
+            double TAwal = 10000000;
+            double coolingrate = 0.99995;
+            double diff = 0;
+            double prob = 0;
+            double penalty = countPenalty();
+            double[][] plot = new double[101][3];
+            int p = 0;
+            long startTime = System.nanoTime();
+            Schedule.copyArray(solution, newSolution);
+            Schedule.copyArray(solution, baseSolution);
+            for (int i = 0; i < 1000000; i++) {
+                double epsilon = 1 / (Math.sqrt(i));
+                if (Math.random() < epsilon) {
+                    int llh = (int) (Math.random() * 3);
+                    switch (llh) {
+                        case 0:
+                            Schedule.twoExchange(solution);
+                        case 1:
+                            Schedule.threeExchange(solution);
+                        case 2:
+                            Schedule.doubleTwoExchange(solution);
                     }
                 } else {
-                    if (score2Exchange > 0) {
-                        score2Exchange = score2Exchange - 10;
-                    } else {
-                        score2Exchange = 0;
+                    if (score2Exchange > score3Exchange && score2Exchange > scoredoubleExchange) {
+                        Schedule.twoExchange(solution);
+                        if (countPenalty() <= bestPenalty) {
+                            if (score2Exchange < 1000) {
+                                score2Exchange = score2Exchange + 10;
+                            } else {
+                                score2Exchange = 1000;
+                            }
+                        } else {
+                            if (score2Exchange > 0) {
+                                score2Exchange = score2Exchange - 10;
+                            } else {
+                                score2Exchange = 0;
+                            }
+                        }
+                    }
+                    if (score3Exchange > score2Exchange && score3Exchange > scoredoubleExchange) {
+                        Schedule.threeExchange(solution);
+                        if (countPenalty() <= bestPenalty) {
+                            if (score3Exchange < 1000) {
+                                score3Exchange = score3Exchange + 10;
+                            } else {
+                                score3Exchange = 1000;
+                            }
+                        } else {
+                            if (score3Exchange > 0) {
+                                score3Exchange = score3Exchange - 10;
+                            } else {
+                                score3Exchange = 0;
+                            }
+                        }
+                    }
+                    if (scoredoubleExchange > score2Exchange && scoredoubleExchange > score3Exchange) {
+                        Schedule.doubleTwoExchange(solution);
+                        if (countPenalty() <= bestPenalty) {
+                            if (scoredoubleExchange < 1000) {
+                                scoredoubleExchange = scoredoubleExchange + 10;
+                            } else {
+                                scoredoubleExchange = 1000;
+                            }
+                        } else {
+                            if (scoredoubleExchange > 0) {
+                                scoredoubleExchange = scoredoubleExchange - 10;
+                            } else {
+                                scoredoubleExchange = 0;
+                            }
+                        }
+                    }
+                    if (score2Exchange == score3Exchange && score2Exchange == scoredoubleExchange) {
+                        if (Math.random() < 0.3) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score2Exchange < 1000) {
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.3 && Math.random() < 0.6) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score3Exchange < 1000) {
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.6) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (scoredoubleExchange < 1000) {
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score2Exchange == scoredoubleExchange && score2Exchange > score3Exchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score2Exchange < 1000) {
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (scoredoubleExchange < 1000) {
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score2Exchange == score3Exchange && score2Exchange > scoredoubleExchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score2Exchange < 1000) {
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score3Exchange < 1000) {
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score3Exchange == scoredoubleExchange && score3Exchange > score2Exchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score3Exchange < 1000) {
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (scoredoubleExchange < 1000) {
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
                     }
                 }
-            } if (score3Exchange > score2Exchange && score3Exchange > scoredoubleExchange) {
-                Schedule.threeExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (score3Exchange < 1000) {
-                        score3Exchange = score3Exchange + 100;
-                    } else {
-                        score3Exchange = 1000;
-                    }
-                } else {
-                    if (score3Exchange > 0) {
-                        score3Exchange = score3Exchange - 10;
-                    } else {
-                        score3Exchange = 0;
-                    }
-                }
-            } if (scoredoubleExchange > score2Exchange && scoredoubleExchange > score3Exchange) {
-                Schedule.doubleTwoExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (scoredoubleExchange < 1000) {
-                        scoredoubleExchange = scoredoubleExchange + 100;
-                    } else {
-                        scoredoubleExchange = 1000;
-                    }
-                } else {
-                    if (scoredoubleExchange > 0) {
-                        scoredoubleExchange = scoredoubleExchange - 10;
-                    } else {
-                        scoredoubleExchange = 0;
-                    }
-                }
-            } if (score2Exchange == score3Exchange && score2Exchange == scoredoubleExchange) {
-                if(Math.random() < 0.3) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.3 && Math.random() < 0.6) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.6) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            } if (score2Exchange == scoredoubleExchange && score2Exchange > score3Exchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            } if (score2Exchange == score3Exchange && score2Exchange > scoredoubleExchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                }
-            } if (score3Exchange == scoredoubleExchange && score3Exchange > score2Exchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            }
 //
 //            System.out.println("2Exchange : " +score2Exchange+ "\t 3Exchange : " +score3Exchange+ "\t double : " +scoredoubleExchange);
 //            System.out.println(currPenalty);
 //            System.out.println(countPenalty());
 
 //            System.out.println(prob);
-            if (Schedule.validAll(solution) == 0) {
-                diff = countPenalty() - currPenalty;
-                prob = Math.exp(-(Math.abs(diff) / TAwal));
+                if (Schedule.validAll(solution) == 0) {
+                    diff = countPenalty() - currPenalty;
+                    prob = Math.exp(-(Math.abs(diff) / TAwal));
 //                System.out.println("feasible");
-                if (countPenalty() <= currPenalty) {
-                    currPenalty = countPenalty();
-                    Schedule.copyArray(solution, newSolution);
-                    if (currPenalty <= bestPenalty) {
-                        bestPenalty = currPenalty;
-                        Schedule.copyArray(solution, newSolution);
-                    } else {
-                        Schedule.copyArray(newSolution, solution);
-                    }
-                } else {
-                    if (prob >= Math.random()) {
+                    if (countPenalty() <= currPenalty) {
                         currPenalty = countPenalty();
                         Schedule.copyArray(solution, newSolution);
+                        if (currPenalty <= bestPenalty) {
+                            bestPenalty = currPenalty;
+                            Schedule.copyArray(solution, newSolution);
+                        } else {
+                            Schedule.copyArray(newSolution, solution);
+                        }
                     } else {
-                        Schedule.copyArray(newSolution, solution);
+                        if (prob >= Math.random()) {
+                            currPenalty = countPenalty();
+                            Schedule.copyArray(solution, newSolution);
+                        } else {
+                            Schedule.copyArray(newSolution, solution);
+                        }
                     }
+                } else {
+                    Schedule.copyArray(newSolution, solution);
                 }
-            } else {
-                Schedule.copyArray(newSolution, solution);
+                TAwal = TAwal * coolingrate;
+                System.out.println("Iterasi : " + (i + 1) + /**" suhu : " + TAwal + " diff : " + diff +  " prob : " + prob + **/" penalti : " + countPenalty());
+                if ((i + 1) % 10000 == 0) {
+                    plot[p][0] = TAwal;
+                    plot[p][1] = currPenalty;
+                    plot[p][2] = bestPenalty;
+                    p = p + 1;
+                }
             }
-            TAwal = TAwal * coolingrate;
-            System.out.println("Iterasi : " + (i+1) + /**" suhu : " + TAwal + " diff : " + diff +  " prob : " + prob + **/ " penalti : " + countPenalty());
-            if ((i+1)%10000 == 0){
-                plot[p][0] = i+1;
-                plot[p][1] = TAwal;
-                plot[p][2] = currPenalty;
-                plot[p][3] = bestPenalty;
-                p = p+1;
-            }
-        }
-        System.out.println(bestPenalty);
-        for (int j = 0; j < plot.length; j++) {
-            for (int k = 0; k < plot[j].length; k++) {
-                System.out.print(plot[j][k] + " ");
-            }
-            System.out.println();
+
+            long endTime = System.nanoTime();
+            long time = (endTime-startTime) / 1000000000;
+            plot [100][0] = time;
+            Schedule.saveOptimation(plot, e);
+//            System.out.println(penalty);
+            Schedule.copyArray(baseSolution, solution);
+
+//            System.out.println(bestPenalty);
+//            for (int j = 0; j < plot.length; j++) {
+//                for (int k = 1; k < plot[j].length; k++) {
+//                    System.out.print(plot[j][k] + " ");
+//                }
+//                System.out.println();
+//            }
         }
     }
 
@@ -1027,7 +1145,9 @@ public class Solution {
     public void SAR() {
         int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
         int [][] newSolution = new int [Schedule.emp.length][day];
+        int [][] bestSolution = new int [Schedule.emp.length][day];
         Schedule.copyArray(solution, newSolution);
+        Schedule.copyArray(solution, bestSolution);
         double bestPenalty; double currPenalty;
         bestPenalty = currPenalty = countPenalty();
         double TAwal = 10000000; //countPenalty() * 0.01;
@@ -1065,6 +1185,7 @@ public class Solution {
                     if (currPenalty <= bestPenalty) {
                         bestPenalty = currPenalty;
                         Schedule.copyArray(solution, newSolution);
+                        Schedule.copyArray(solution, bestSolution);
                     } else {
                         Schedule.copyArray(newSolution, solution);
                     }
@@ -1083,6 +1204,7 @@ public class Solution {
                         currentStagnantCount = currentStagnantCount + 1;
 //                    System.out.println("stagnant " + currentStagnantCount);
                         if (currentStagnantCount >= 10000) {
+                            Schedule.copyArray(bestSolution, solution);
                             if (bestPenalty == stuckedBestCost) {
                                 if (currPenalty - stuckedCurrentCost < 0.02) {
                                     heat = heat + 1;
@@ -1124,288 +1246,381 @@ public class Solution {
         }
     }
 
-    public void RL_SAR(){
-        int [] score = {500000, 500000, 500000};
-        int score2Exchange = score[0];
-        int score3Exchange = score[1];
-        int scoredoubleExchange = score[2];
-        int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
-        int[][] newSolution = new int[Schedule.emp.length][day];
-        double currPenalty; double bestPenalty;
-        currPenalty = bestPenalty = countPenalty();
-        double TAwal = 10000000;
-        double coolingrate = 0.99995;
-        double diff = 0;
-        double prob = 0;
-        double penalty = countPenalty();
-        Schedule.copyArray(solution, newSolution);
-        double stuckedBestCost = 0;
-        double stuckedCurrentCost = 0;
-        double currentStagnantCount = 0;
-        double heat = 0;
-        double [] prevCost = new double[1000000];
-        double[][] plot = new double[100][4];
-        int p = 0;
-        for (int i = 0; i < 1000000; i++) {
-            if (score2Exchange > score3Exchange && score2Exchange > scoredoubleExchange) {
-                Schedule.twoExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (score2Exchange < 1000) {
-                        score2Exchange = score2Exchange + 100;
-                    } else {
-                        score2Exchange = 1000;
+    public void RL_SAR() throws IOException {
+        for (int e = 0; e < 3; e++) {
+            int[] score = {500, 500, 500};
+            int score2Exchange = score[0];
+            int score3Exchange = score[1];
+            int scoredoubleExchange = score[2];
+            int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
+            int[][] newSolution = new int[Schedule.emp.length][day];
+            int[][] baseSolution = new int[Schedule.emp.length][day];
+            double currPenalty;
+            double bestPenalty;
+            currPenalty = bestPenalty = countPenalty();
+            double TAwal = 10000000;
+            double coolingrate = 0.99995;
+            double diff = 0;
+            double prob = 0;
+            double d = 0;
+            double penalty = countPenalty();
+            Schedule.copyArray(solution, newSolution);
+            Schedule.copyArray(solution, baseSolution);
+            double stuckedBestCost = 0;
+            double stuckedCurrentCost = 0;
+            double currentStagnantCount = 0;
+            double heat = 0;
+            int reheating = 0;
+            double discountFactor = 0.9;
+//        double epsilon = 0.1;
+            double[] prevCost = new double[1000000];
+            double[][] plot = new double[101][3];
+            int p = 0;
+            long startTime = System.nanoTime();
+            for (int i = 0; i < 1000000; i++) {
+                double epsilon = 1 / (Math.sqrt(i));
+                if (Math.random() < epsilon) {
+                    int llh = (int) (Math.random() * 3);
+                    switch (llh) {
+                        case 0:
+                            Schedule.twoExchange(solution);
+                        case 1:
+                            Schedule.threeExchange(solution);
+                        case 2:
+                            Schedule.doubleTwoExchange(solution);
                     }
                 } else {
-                    if (score2Exchange > 0) {
-                        score2Exchange = score2Exchange - 10;
-                    } else {
-                        score2Exchange = 0;
+                    if (score2Exchange > score3Exchange && score2Exchange > scoredoubleExchange) {
+                        Schedule.twoExchange(solution);
+                        if (countPenalty() <= bestPenalty) {
+                            if (score2Exchange < 1000) {
+//                            score2Exchange = (score2Exchange + 10) * (int) (Math.pow(discountFactor, i));
+//                            score2Exchange = (i * score2Exchange + 10) / i;
+                                score2Exchange = score2Exchange + 10;
+                            } else {
+                                score2Exchange = 1000;
+                            }
+                        } else {
+                            if (score2Exchange > 0) {
+//                            score2Exchange = (score2Exchange - 10) * (int) (Math.pow(discountFactor, i));
+//                            score2Exchange = (i * score2Exchange - 10) / i;
+                                score2Exchange = score2Exchange - 10;
+                            } else {
+                                score2Exchange = 0;
+                            }
+                        }
+                    }
+                    if (score3Exchange > score2Exchange && score3Exchange > scoredoubleExchange) {
+                        Schedule.threeExchange(solution);
+                        if (countPenalty() <= bestPenalty) {
+                            if (score3Exchange < 1000) {
+//                            score3Exchange = (score3Exchange + 10) * (int) (Math.pow(discountFactor, i));
+//                            score3Exchange = (i * score3Exchange + 10) / i;
+                                score3Exchange = score3Exchange + 10;
+                            } else {
+                                score3Exchange = 1000;
+                            }
+                        } else {
+                            if (score3Exchange > 0) {
+//                            score3Exchange = (score3Exchange - 10) * (int) (Math.pow(discountFactor, i));
+//                            score3Exchange = (i * score3Exchange - 10) / i;
+                                score3Exchange = score3Exchange - 10;
+                            } else {
+                                score3Exchange = 0;
+                            }
+                        }
+                    }
+                    if (scoredoubleExchange > score2Exchange && scoredoubleExchange > score3Exchange) {
+                        Schedule.doubleTwoExchange(solution);
+                        if (countPenalty() <= bestPenalty) {
+                            if (scoredoubleExchange < 1000) {
+//                            scoredoubleExchange = (scoredoubleExchange + 10) * (int) (Math.pow(discountFactor, i));
+//                            scoredoubleExchange = (i * scoredoubleExchange + 10) / i;
+                                scoredoubleExchange = scoredoubleExchange + 10;
+                            } else {
+                                scoredoubleExchange = 1000;
+                            }
+                        } else {
+                            if (scoredoubleExchange > 0) {
+//                            scoredoubleExchange = (scoredoubleExchange - 10) * (int) (Math.pow(discountFactor, i));
+//                            scoredoubleExchange = (i * scoredoubleExchange - 10) / i;
+                                scoredoubleExchange = scoredoubleExchange - 10;
+                            } else {
+                                scoredoubleExchange = 0;
+                            }
+                        }
+                    }
+                    if (score2Exchange == score3Exchange && score2Exchange == scoredoubleExchange) {
+                        if (Math.random() < 0.3) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score2Exchange < 1000) {
+//                                score2Exchange = (score2Exchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                score2Exchange = (i * score2Exchange + 10) / i;
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+//                                score2Exchange = (score2Exchange - 10) * (int) (Math.pow(discountFactor, i));
+//                                score2Exchange = (i * score2Exchange - 10) / i;
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.3 && Math.random() < 0.6) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score3Exchange < 1000) {
+//                                score3Exchange = (score3Exchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                score3Exchange = (i * score3Exchange + 10) / i;
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+//                                score3Exchange = (score3Exchange - 10) * (int) (Math.pow(discountFactor, i));
+//                                score3Exchange = (i * score3Exchange - 10) / i;
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.6) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (scoredoubleExchange < 1000) {
+//                                scoredoubleExchange = (scoredoubleExchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                scoredoubleExchange = (i * scoredoubleExchange + 10) / i;
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+//                                scoredoubleExchange = (scoredoubleExchange - 10) * (int) (Math.pow(discountFactor, i));
+//                                scoredoubleExchange = (i * scoredoubleExchange - 10) / i;
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score2Exchange == scoredoubleExchange && score2Exchange > score3Exchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score2Exchange < 1000) {
+//                                score2Exchange = (score2Exchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                score2Exchange = (i * score2Exchange + 10) / i;
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+//                                score2Exchange = (score2Exchange - 10) * (int) (Math.pow(discountFactor, i));
+//                                score2Exchange = (i * score2Exchange - 10) / i;
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (scoredoubleExchange < 1000) {
+//                                scoredoubleExchange = (scoredoubleExchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                scoredoubleExchange = (i * scoredoubleExchange + 10) / i;
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+//                                scoredoubleExchange = (scoredoubleExchange -10) * (int) (Math.pow(discountFactor, i));
+//                                scoredoubleExchange = (i * scoredoubleExchange - 10) / i;
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score2Exchange == score3Exchange && score2Exchange > scoredoubleExchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.twoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score2Exchange < 1000) {
+//                                score2Exchange = (score2Exchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                score2Exchange = (i * score2Exchange + 10) / i;
+                                    score2Exchange = score2Exchange + 10;
+                                } else {
+                                    score2Exchange = 1000;
+                                }
+                            } else {
+                                if (score2Exchange > 0) {
+//                                score2Exchange = (score2Exchange - 10) * (int) (Math.pow(discountFactor, i));
+//                                score2Exchange = (i * score2Exchange - 10) / i;
+                                    score2Exchange = score2Exchange - 10;
+                                } else {
+                                    score2Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score3Exchange < 1000) {
+//                                score3Exchange = (score3Exchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                score3Exchange = (i * score3Exchange + 10) / i;
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+//                                score3Exchange = (score3Exchange - 10) * (int) (Math.pow(discountFactor, i));
+//                                score3Exchange = (i * score3Exchange - 10) / i;
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                    }
+                    if (score3Exchange == scoredoubleExchange && score3Exchange > score2Exchange) {
+                        if (Math.random() < 0.5) {
+                            Schedule.threeExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (score3Exchange < 1000) {
+//                                score3Exchange = (score3Exchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                score3Exchange = (i * score3Exchange + 10) / i;
+                                    score3Exchange = score3Exchange + 10;
+                                } else {
+                                    score3Exchange = 1000;
+                                }
+                            } else {
+                                if (score3Exchange > 0) {
+//                                score3Exchange = (score3Exchange - 10) * (int) (Math.pow(discountFactor, i));
+//                                score3Exchange = (i * score3Exchange - 10) / i;
+                                    score3Exchange = score3Exchange - 10;
+                                } else {
+                                    score3Exchange = 0;
+                                }
+                            }
+                        }
+                        if (Math.random() > 0.5) {
+                            Schedule.doubleTwoExchange(solution);
+                            if (countPenalty() <= bestPenalty) {
+                                if (scoredoubleExchange < 1000) {
+//                                scoredoubleExchange = (scoredoubleExchange + 10) * (int) (Math.pow(discountFactor, i));
+//                                scoredoubleExchange = (i * scoredoubleExchange + 10) / i;
+                                    scoredoubleExchange = scoredoubleExchange + 10;
+                                } else {
+                                    scoredoubleExchange = 1000;
+                                }
+                            } else {
+                                if (scoredoubleExchange > 0) {
+//                                scoredoubleExchange = (scoredoubleExchange - 10) * (int) (Math.pow(discountFactor, i));
+//                                scoredoubleExchange = (i * scoredoubleExchange - 10) / i;
+                                    scoredoubleExchange = scoredoubleExchange - 10;
+                                } else {
+                                    scoredoubleExchange = 0;
+                                }
+                            }
+                        }
                     }
                 }
-            } if (score3Exchange > score2Exchange && score3Exchange > scoredoubleExchange) {
-                Schedule.threeExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (score3Exchange < 1000) {
-                        score3Exchange = score3Exchange + 100;
-                    } else {
-                        score3Exchange = 1000;
-                    }
-                } else {
-                    if (score3Exchange > 0) {
-                        score3Exchange = score3Exchange - 10;
-                    } else {
-                        score3Exchange = 0;
-                    }
-                }
-            } if (scoredoubleExchange > score2Exchange && scoredoubleExchange > score3Exchange) {
-                Schedule.doubleTwoExchange(solution);
-                if (countPenalty() <= penalty) {
-                    if (scoredoubleExchange < 1000) {
-                        scoredoubleExchange = scoredoubleExchange + 100;
-                    } else {
-                        scoredoubleExchange = 1000;
-                    }
-                } else {
-                    if (scoredoubleExchange > 0) {
-                        scoredoubleExchange = scoredoubleExchange - 10;
-                    } else {
-                        scoredoubleExchange = 0;
-                    }
-                }
-            } if (score2Exchange == score3Exchange && score2Exchange == scoredoubleExchange) {
-                if(Math.random() < 0.3) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.3 && Math.random() < 0.6) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.6) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            } if (score2Exchange == scoredoubleExchange && score2Exchange > score3Exchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            } if (score2Exchange == score3Exchange && score2Exchange > scoredoubleExchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.twoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score2Exchange < 1000) {
-                            score2Exchange = score2Exchange + 100;
-                        } else {
-                            score2Exchange = 1000;
-                        }
-                    } else {
-                        if (score2Exchange > 0) {
-                            score2Exchange = score2Exchange - 10;
-                        } else {
-                            score2Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                }
-            } if (score3Exchange == scoredoubleExchange && score3Exchange > score2Exchange) {
-                if(Math.random() < 0.5) {
-                    Schedule.threeExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (score3Exchange < 1000) {
-                            score3Exchange = score3Exchange + 100;
-                        } else {
-                            score3Exchange = 1000;
-                        }
-                    } else {
-                        if (score3Exchange > 0) {
-                            score3Exchange = score3Exchange - 10;
-                        } else {
-                            score3Exchange = 0;
-                        }
-                    }
-                } if (Math.random() > 0.5) {
-                    Schedule.doubleTwoExchange(solution);
-                    if (countPenalty() <= penalty) {
-                        if (scoredoubleExchange < 1000) {
-                            scoredoubleExchange = scoredoubleExchange + 100;
-                        } else {
-                            scoredoubleExchange = 1000;
-                        }
-                    } else {
-                        if (scoredoubleExchange > 0) {
-                            scoredoubleExchange = scoredoubleExchange - 10;
-                        } else {
-                            scoredoubleExchange = 0;
-                        }
-                    }
-                }
-            }
 //            System.out.println("2Exchange : " +score2Exchange+ "\t 3Exchange : " +score3Exchange+ "\t double : " +scoredoubleExchange);
 //            System.out.println(currPenalty);
 //            System.out.println(countPenalty());
 
 //            System.out.println(prob);
-            if (Schedule.validAll(solution) == 0) {
-                diff = countPenalty() - currPenalty;
-                prob = Math.exp(-(Math.abs(diff) / TAwal));
+                if (Schedule.validAll(solution) == 0) {
+                    diff = countPenalty() - currPenalty;
+                    d = Math.abs(diff) / TAwal;
+                    prob = Math.exp(-d);
 //                System.out.println("feasible");
-                if (countPenalty() <= currPenalty) {
-                    currPenalty = countPenalty();
-                    Schedule.copyArray(solution, newSolution);
-                    if (currPenalty <= bestPenalty) {
-                        bestPenalty = currPenalty;
-                        Schedule.copyArray(solution, newSolution);
-                    } else {
-                        Schedule.copyArray(newSolution, solution);
-                    }
-                } else {
-                    if (prob >= Math.random()) {
+                    if (countPenalty() <= currPenalty) {
                         currPenalty = countPenalty();
                         Schedule.copyArray(solution, newSolution);
+                        if (currPenalty <= bestPenalty) {
+                            bestPenalty = currPenalty;
+                            Schedule.copyArray(solution, newSolution);
+//                        Schedule.copyArray(solution, bestSolution);
+                        } else {
+                            Schedule.copyArray(newSolution, solution);
+                        }
                     } else {
-                        Schedule.copyArray(newSolution, solution);
+                        if (prob >= Math.random()) {
+//                        System.out.println("solusi jelek diterima");
+                            currPenalty = countPenalty();
+                            Schedule.copyArray(solution, newSolution);
+                        } else {
+                            Schedule.copyArray(newSolution, solution);
+                        }
                     }
-                }
-                if (i > 0) {
-                    if (Math.abs(currPenalty - prevCost[i-1]) <= 0.01) {
+                    if (i > 0 && reheating <= 5) {
+                        if (Math.abs(currPenalty - prevCost[i - 1]) <= 0.01) {
 //                    System.out.println("stuck");
-                        currentStagnantCount = currentStagnantCount + 1;
+                            currentStagnantCount = currentStagnantCount + 1;
 //                    System.out.println("stagnant " + currentStagnantCount);
-                        if (currentStagnantCount >= 10000) {
-                            if (bestPenalty == stuckedBestCost) {
-                                if (currPenalty - stuckedCurrentCost < 0.02) {
-                                    heat = heat + 1;
+                            if (currentStagnantCount >= 50000) {
+//                            Schedule.copyArray(bestSolution, solution);
+                                if (bestPenalty == stuckedBestCost) {
+                                    if (currPenalty - stuckedCurrentCost < 0.02) {
+                                        heat = heat + 1;
+                                    } else {
+                                        heat = 0;
+                                    }
                                 } else {
                                     heat = 0;
                                 }
-                            } else {
-                                heat = 0;
+                                currentStagnantCount = 0;
+//                            System.out.println("heat " + heat);
+                                TAwal = (heat * 0.2 * currPenalty + currPenalty) * 0.01;
+                                stuckedBestCost = bestPenalty;
+                                stuckedCurrentCost = currPenalty;
+                                reheating++;
                             }
-                            currentStagnantCount = 0;
-                            System.out.println("heat " + heat);
-                            TAwal = (heat * 0.2 * currPenalty + currPenalty) * 0.01;
-                            stuckedBestCost = bestPenalty;
-                            stuckedCurrentCost = currPenalty;
+                            heat = 0;
                         }
-                        heat = 0;
                     }
+                } else {
+                    Schedule.copyArray(newSolution, solution);
                 }
-            } else {
-                Schedule.copyArray(newSolution, solution);
+                TAwal = TAwal * coolingrate;
+                System.out.println("Iterasi : " + (i + 1) + /**" suhu : " + TAwal + " diff : " + diff +  " prob : " + prob + **/" penalti : " + countPenalty());
+                if ((i + 1) % 10000 == 0) {
+                    plot[p][0] = TAwal;
+                    plot[p][1] = currPenalty;
+                    plot[p][2] = bestPenalty;
+                    p = p + 1;
+                }
+                prevCost[i] = currPenalty;
             }
-            TAwal = TAwal * coolingrate;
-            System.out.println("Iterasi : " + (i+1) + /**" suhu : " + TAwal + " diff : " + diff +  " prob : " + prob + **/" penalti : " + countPenalty());
-            if ((i+1)%10000 == 0){
-                plot[p][0] = i+1;
-                plot[p][1] = TAwal;
-                plot[p][2] = currPenalty;
-                plot[p][3] = bestPenalty;
-                p = p+1;
-            }
-            prevCost[i] = currPenalty;
-        }
-        System.out.println(bestPenalty);
-        for (int j = 0; j < plot.length; j++) {
-            for (int k = 0; k < plot[j].length; k++) {
-                System.out.print(plot[j][k] + " ");
-            }
-            System.out.println();
+
+            long endTime = System.nanoTime();
+            long time = (endTime-startTime) / 1000000000;
+            plot [100][0] = time;
+            Schedule.saveOptimation(plot, e);
+//            System.out.println(penalty);
+            Schedule.copyArray(baseSolution, solution);
+//            System.out.println(bestPenalty);
+//            for (int j = 0; j < plot.length; j++) {
+//                for (int k = 1; k < plot[j].length; k++) {
+//                    System.out.print(plot[j][k] + " ");
+//                }
+//                System.out.println();
+//            }
         }
     }
 }

@@ -427,8 +427,14 @@ public class Schedule {
                     {
                         if(diffHour(matrixsolTemp)<=solutionHour)
                         {
-                            copyArray(matrixsolTemp, matrixsol);
-                            solutionHour = diffHour(matrixsolTemp);
+                            if (countHC6(matrixsolTemp) <= count) {
+                                copyArray(matrixsolTemp, matrixsol);
+                                count = countHC6(matrixsolTemp);
+                                solutionHour = diffHour(matrixsolTemp);
+                            }
+                            else {
+                                copyArray(matrixsol, matrixsolTemp);
+                            }
                         }
                         else {
                             copyArray(matrixsol, matrixsolTemp);
@@ -481,8 +487,8 @@ public class Schedule {
                                         if (validHC4Competence(matrixsolTemp2)) {
                                             if (validHC5(matrixsolTemp2)) {
 //                                                if (validHC7(matrixsolTemp2)) {
-                                                if (countHC6(matrixsol) <= count) {
-                                                    count = countHC6(matrixsol);
+                                                if (countHC6(matrixsolTemp2) <= count) {
+                                                    count = countHC6(matrixsolTemp2);
                                                     copyArray(matrixsolTemp2, matrixsol);
                                                 } else
                                                     copyArray(matrixsol, matrixsolTemp2);
@@ -551,7 +557,7 @@ public class Schedule {
             } index++;
         }
         Solution sol = new Solution(matrixsol);
-        sol.RL_SA();
+        sol.RL_SAR();
 //        System.out.println(sol.countPenalty());
     }
 
@@ -1020,6 +1026,16 @@ public class Schedule {
 
     public static void saveSolution (int [][] solution, int number) throws IOException {
         FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTur" + file + ".txt", false);
+        for (int i = 0; i < solution.length; i++) {
+            for (int j = 0; j < solution[i].length; j++) {
+                writer.write(solution[i][j] + " ");
+            } writer.write("\n");
+        }
+        writer.close();
+    }
+
+    public static void saveOptimation (double [][] solution, int number) throws IOException {
+        FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\Solusi RL-SA" + number + ".txt", false);
         for (int i = 0; i < solution.length; i++) {
             for (int j = 0; j < solution[i].length; j++) {
                 writer.write(solution[i][j] + " ");
