@@ -38,6 +38,7 @@ public class Schedule {
 
     static String XLSX_FILE_PATH;
     static String fileOptimization;
+    static String fileSolution;
 
     public static void main(String[] args) throws IOException, InvalidFormatException, ParseException {
         System.out.println("=======NURSE ROSTERING PROBLEM OPTIMIZATION=======");
@@ -51,7 +52,9 @@ public class Schedule {
         }
         System.out.println("Select your file :");
         file = input.nextInt();
+        // GANTI DIREKTORI DI BAWAH INI SESUAI DENGAN DIREKTORI PENYIMPANAN DATA PERAWAT (OPTUR)
         fileOptimization = "D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTur" + (file) +".txt";
+        fileSolution = "D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTurSol" + (file) +".txt";
         XLSX_FILE_PATH = "D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\OpTur" + (file)+".xls";
 
         String[][] employee = employees().clone();
@@ -307,71 +310,9 @@ public class Schedule {
             initialSolution();
         if(choice==2)
             optimization();
-
     }
 
     public static void initialSolution() throws IOException {
-//        pdc = new int [3][7];
-//        int s1 = 0;
-//        int s2 = 0;
-//        int s3 = 0;
-//        for(int i=0; i<7; i++) {
-//            for (int j = 0; j < plan.length; j++) {
-//                if (plan[j].getNeed(i) != 0) {
-//                    if(shiftx[j].getCategory()==1)
-//                        s1 =  s1 + plan[j].getNeed(i);
-//                    if(shiftx[j].getCategory()==2)
-//                        s2 = s2 + plan[j].getNeed(i);
-//                    if(shiftx[j].getCategory()==3)
-//                        s3 = s3 + plan[j].getNeed(i);
-//                }
-//            }
-//            pdc[0][i] = s1; s1 =0;
-//            pdc[1][i] = s2; s2 =0;
-//            pdc[2][i] = s3; s3 =0;
-////            for (int j = 0; j < pdc.length; j++) {
-////                for (int k = 0; k < pdc[j].length; k++) {
-////                    System.out.print(pdc[j][k] + " ");
-////                }
-////                System.out.println();
-////            }
-//        }
-//        ndc = new int[3][7];
-//        int [][] clonepdc = new  int [3][7];
-//        int [][] clonendc = new int [3][7];
-//        for(int i=0; i<clonendc.length; i++)
-//            for(int j=0 ;  j<clonendc[i].length;j++)
-//            {
-//                clonendc[i][j] = ndc[i][j];
-//                clonepdc[i][j] = pdc[i][j];
-//            }
-//        //print(batasjam);
-//        manpowerCatagory = new int[3];
-//        for(int i=0; i<7; i++)
-//            for(int j=0; j<plan.length; j++)
-//                if(plan[j].getNeed(i)!=0)
-//                {
-//                    if(shiftx[j].getCategory()==1)
-//                        manpowerCatagory[0] = manpowerCatagory[0]+plan[j].getNeed(i);
-//                    if(shiftx[j].getCategory()==2)
-//                        manpowerCatagory[1] = manpowerCatagory[1]+plan[j].getNeed(i);
-//                    if(shiftx[j].getCategory()==3)
-//                        manpowerCatagory[2] = manpowerCatagory[2]+plan[j].getNeed(i);
-//                }
-//
-//        for(int i=0; i<manpowerCatagory.length; i++) {
-//            manpowerCatagory[i] = manpowerCatagory[i] * 6;
-//        }
-//
-//        int []mpclone = new int[3];
-//        for(int i=0 ;i<mpclone.length; i++)
-//            mpclone[i] = manpowerCatagory[i];
-//
-//        mec = new double[3][emp.length];
-//        for(int i=0; i<emp.length; i++)
-//            for(int j=0; j<mec.length; j++)
-//                mec[j][i]  = manpowerCatagory[j]/emp[i].getHours();
-
         int [][] matrixsol = new int[emp.length][planningHorizon[file-1]*7];
         for(int i = 0; i<matrixsol.length; i++)
             for(int j=0; j<matrixsol[i].length;  j++)
@@ -530,15 +471,6 @@ public class Schedule {
         }
         else {
             System.out.println("HC " + validAll(matrixsol) + " tidak feasible");
-//            print(matrixsol);
-//            Solution sol = new Solution(matrixsol);
-//            System.out.println("penalty = " + sol.countPenalty());
-//            System.out.println("Do you want to save?\n 1. Yes\n 2. No");
-//            int save = input.nextInt();
-//            if (save ==  1) {
-//                saveSolution(matrixsol, file);
-//                saveSolutionShiftName(matrixsol, file);
-//            }
         }
     }
 
@@ -557,8 +489,9 @@ public class Schedule {
             } index++;
         }
         Solution sol = new Solution(matrixsol);
+        // GANTI RL_SAR DENGAN ALGORITMA OPTIMSASI YANG DIINGINKAN
         sol.RL_SAR();
-//        System.out.println(sol.countPenalty());
+        System.out.println(sol.countPenalty());
     }
 
     public static void print(int[][] cetak)
@@ -626,8 +559,6 @@ public class Schedule {
 
         int randomEmp1 = -1;
         int randomEmp2 = -1;
-//        int randomEmp1 = (int) (Math.random() * emp.length);
-//        int randomEmp2 = (int) (Math.random() * emp.length);
         do {
             randomEmp1 = (int) (Math.random() * emp.length);
         } while (solution[randomEmp1][randomDay]==0);
@@ -1025,6 +956,7 @@ public class Schedule {
     }
 
     public static void saveSolution (int [][] solution, int number) throws IOException {
+        // GANTI DIREKTORI DI BAWAH INI SESUAI DENGAN DIREKTORI UNTUK MENYIMPAN FILE YANG TERBENTUK
         FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTur" + file + ".txt", false);
         for (int i = 0; i < solution.length; i++) {
             for (int j = 0; j < solution[i].length; j++) {
@@ -1034,7 +966,19 @@ public class Schedule {
         writer.close();
     }
 
+    public static void saveOptimationSolution (int [][] solution, int number) throws IOException {
+        // GANTI DIREKTORI DI BAWAH INI SESUAI DENGAN DIREKTORI UNTUK MENYIMPAN FILE YANG TERBENTUK
+        FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTurSol" + file + ".txt", false);
+        for (int i = 0; i < solution.length; i++) {
+            for (int j = 0; j < solution[i].length; j++) {
+                writer.write(solution[i][j] + " ");
+            } writer.write("\n");
+        }
+        writer.close();
+    }
+
     public static void saveOptimation (double [][] solution, int number) throws IOException {
+        // GANTI DIREKTORI DI BAWAH INI SESUAI DENGAN DIREKTORI UNTUK MENYIMPAN FILE YANG TERBENTUK
         FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\Solusi RL-SA" + number + ".txt", false);
         for (int i = 0; i < solution.length; i++) {
             for (int j = 0; j < solution[i].length; j++) {
@@ -1045,7 +989,22 @@ public class Schedule {
     }
 
     public static void saveSolutionShiftName (int [][] solution, int number) throws IOException {
+        // GANTI DIREKTORI DI BAWAH INI SESUAI DENGAN DIREKTORI UNTUK MENYIMPAN FILE YANG TERBENTUK
         FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTur" + file + "NameShift.txt", false);
+        for (int i = 0; i < solution.length; i++) {
+            for (int j = 0; j < solution[i].length; j++) {
+                if (solution[i][j] != 0)
+                    writer.write(shiftx[solution[i][j]-1].getName() + " ");
+                else
+                    writer.write("<Free>" + " ");
+            } writer.write("\n");
+        }
+        writer.close();
+    }
+
+    public static void saveOptimationSolutionShiftName (int [][] solution, int number) throws IOException {
+        // GANTI DIREKTORI DI BAWAH INI SESUAI DENGAN DIREKTORI UNTUK MENYIMPAN FILE YANG TERBENTUK
+        FileWriter writer = new FileWriter("D:\\ITS\\Semester 8\\Tugas Akhir\\Nurse Rostering\\nurserost\\Solusi\\OpTurSol" + file + "NameShift.txt", false);
         for (int i = 0; i < solution.length; i++) {
             for (int j = 0; j < solution[i].length; j++) {
                 if (solution[i][j] != 0)
@@ -1078,7 +1037,6 @@ public class Schedule {
             last++;
         }
         String [][] data = new String[last][sidex];
-//        System.out.println(last + " " + sidex);
         last = 0;
         for (int i = first; i <= sheet.getLastRowNum(); i++) {
             row = sheet.getRow(i);
@@ -1113,7 +1071,6 @@ public class Schedule {
             last++;
         }
         String [][] data = new String[last][sidex];
-//        System.out.println(lasta + " " + sidex);
         last = 0;
         for (int i = first-1; i <= sheet.getLastRowNum(); i++) {
             row = sheet.getRow(i);
@@ -1149,7 +1106,6 @@ public class Schedule {
             last++;
         }
         String [][] data = new String[last][sidex];
-        //System.out.println(last + " " + sidex);
         last = 0;
         for (int i = first; i <= sheet.getLastRowNum(); i++) {
             row = sheet.getRow(i);
@@ -1179,13 +1135,11 @@ public class Schedule {
             }
             if (sidex < side) {
                 sidex = side;
-//                System.out.println(sidex);
             }
             side = 0;
             last++;
         }
         String [][] data = new String[last][sidex];
-//        System.out.println(last + " " + sidex);
         last = 0;
         for (int i = first-1; i <= 15; i++) {
             row = sheet.getRow(i);
@@ -1266,7 +1220,6 @@ public class Schedule {
             last++;
         }
         String [][] data = new String[last][sidex];
-//        System.out.println(last + " " + sidex);
         last = 0;
         for (int i = first-1; i <= 12; i++) {
             row = sheet.getRow(i);
@@ -1315,7 +1268,6 @@ public class Schedule {
             last++;
         }
         String [][] data = new String[last][sidex];
-//        System.out.println(last + " " + sidex);
         last = 0;
         for (int i = first+12; i <= sheet.getLastRowNum(); i++) {
             row = sheet.getRow(i);

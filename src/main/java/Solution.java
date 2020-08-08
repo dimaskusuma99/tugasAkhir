@@ -306,69 +306,18 @@ public class Solution {
         return penalty9;
     }
 
-    public void tryToFeasible() {
-        int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
-        int [][] newSolution = new int [solution.length][day];
-        Schedule.copyArray(solution, newSolution);
-        double solutionHour = Schedule.diffHour(solution);
-        int count = Schedule.countHC6(solution);
-        for(int i =0; i<50000; i++)
-        {
-            int llh = (int) (Math.random()*3);
-            if(llh == 0)
-                Schedule.twoExchange(newSolution);
-            if(llh == 1)
-                Schedule.threeExchange(newSolution);
-            if(llh == 2)
-                Schedule.doubleTwoExchange(newSolution);
-            if(Schedule.validHC4Competence(newSolution))
-            {
-                if(Schedule.validHC5(newSolution))
-                {
-                    if(Schedule.validHC7(newSolution))
-                    {
-                        if(Schedule.diffHour(newSolution)<=solutionHour)
-                        {
-                            if (Schedule.countHC6(newSolution) <= count) {
-                                Schedule.copyArray(newSolution, solution);
-                                count = Schedule.countHC6(newSolution);
-                                solutionHour = Schedule.diffHour(newSolution);
-                            }
-                            else {
-                                Schedule.copyArray(solution, newSolution);
-                            }
-                        }
-                        else {
-                            Schedule.copyArray(solution, newSolution);
-                        }
-                    }
-                    else {
-                        Schedule.copyArray(solution, newSolution);
-                    }
-                }
-                else {
-                    Schedule.copyArray(solution, newSolution);
-                }
-            }
-            else {
-                Schedule.copyArray(solution, newSolution);
-            }
-            System.out.println("Iterasi ke " + (i+1) + " " + solutionHour +  " hc6 " + Schedule.countHC6(solution));
-        }
-    }
-
     public void hillClimbing () throws IOException {
-        for (int e = 0; e < 9; e++) {
+        for (int e = 0; e < 3; e++) {
             int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
             int[][] newSolution = new int[solution.length][day];
             int [][] baseSolution = new int [solution.length][day];
             double penalty = countPenalty();
             Schedule.copyArray(solution, newSolution);
             Schedule.copyArray(solution, baseSolution);
-            double[][] plot = new double[101][2];
+            double[][] plot = new double[201][1];
             int p = 0;
             long startTime = System.nanoTime();
-            for (int i = 0; i < 10000; i++) {
+            for (int i = 0; i < 2000000; i++) {
                 int llh = (int) (Math.random() * 3);
                 switch (llh) {
                     case 0:
@@ -390,116 +339,18 @@ public class Solution {
                 }
                 System.out.println("iterasi ke " + (i + 1) + " penalti : " + countPenalty());
                 if ((i + 1) % 10000 == 0) {
-                    plot[p][0] = i + 1;
-                    plot[p][1] = penalty;
+                    plot[p][0] = penalty;
                     p = p + 1;
                 }
             }
 
             long endTime = System.nanoTime();
             long time = (endTime-startTime) / 1000000000;
-            plot [100][0] = time;
+            plot [200][0] = time;
             Schedule.saveOptimation(plot, e);
             System.out.println(penalty);
             Schedule.copyArray(baseSolution, solution);
-//            for (int j = 0; j < plot.length; j++) {
-//                for (int k = 1; k < plot[j].length; k++) {
-//                    System.out.print(plot[j][k] + " ");
-//                }
-//                System.out.println();
-//            }
         }
-    }
-
-    public int countRF (int [] rf) {
-        int index = -1000000;
-        int llh = -1;
-        LinkedList<Integer> rl = new LinkedList<Integer>();
-        for (int i = 0; i < rf.length; i++) {
-            if (rf[i] > index) {
-                llh = i;
-                index = rf[i];
-                for (int j = 0; j < rf.length; j++) {
-                    if (rf[j] == index)
-                        rl.add(j);
-                }
-                if (!rl.isEmpty()) {
-                    int x = -1;
-                    x = (int) (Math.random() * 3);
-                    while (!rl.contains(x)) {
-                        x = (int) (Math.random() * 3);
-                    }
-                    rl.clear();
-                }
-            }
-        }
-        return llh;
-    }
-
-    public void reinforcementLearning1 () {
-        int p = 0;
-        int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
-        int [][] newSolution = new int [solution.length][day];
-        double S = countPenalty();
-        double s = S;
-        double currPenalty; double bestPenalty;
-        currPenalty = bestPenalty = countPenalty();
-        Schedule.copyArray(solution, newSolution);
-        double [] fitness = new double[200];
-        for (int i = 0; i < fitness.length; i++) {
-            fitness[i] = S;
-        }
-        int llh = -1;
-        int [] rf = {0, 0, 0};
-        double diff = 0;
-        double d = 0;
-        double prob = 0;
-        double TAwal = 10000000;
-        double coolingrate = 0.99995;
-        for (int i = 0; i < 1000000; i++) {
-//            llh = -1;
-            llh = countRF(rf);
-            if (llh == 0)
-                Schedule.twoExchange(solution);
-            if (llh == 1)
-                Schedule.threeExchange(solution);
-            if (llh == 2)
-                Schedule.doubleTwoExchange(solution);
-            if (Schedule.validAll(solution) == 0) {
-                diff = countPenalty() - currPenalty;
-                d = Math.abs(diff)/TAwal;
-                prob = Math.exp(-d);
-//                System.out.println("feasible");
-                if (countPenalty() <= currPenalty) {
-                    currPenalty = countPenalty();
-                    Schedule.copyArray(solution, newSolution);
-                    if (currPenalty <= bestPenalty) {
-                        bestPenalty = currPenalty;
-                        Schedule.copyArray(solution, newSolution);
-                        rf[llh] = rf[llh]+1;
-                    } else {
-                        Schedule.copyArray(newSolution, solution);
-                    }
-                } else {
-                    if (prob >= Math.random()) {
-                        System.out.println("solusi jelek diterima");
-                        currPenalty = countPenalty();
-                        Schedule.copyArray(solution, newSolution);
-                    } else {
-                        Schedule.copyArray(newSolution, solution);
-                        rf[llh] = rf[llh] - 1;
-                    }
-                }
-            } else {
-                Schedule.copyArray(newSolution, solution);
-                rf[llh] = rf[llh] - 1;
-            }
-            TAwal = TAwal * coolingrate;
-//            System.out.println(rf[llh]);
-//            System.out.println("Iterasi ke " + (i+1) + " s " + s);
-            System.out.println("Iterasi : " + (i+1) +" suhu : " + TAwal + " diff : " + diff + " d : " + d + " prob : " + prob + " penalti : " + countPenalty());
-        }
-        System.out.println(bestPenalty);
     }
 
     public void reinforcementLearning () throws IOException {
@@ -512,12 +363,12 @@ public class Solution {
             int[][] newSolution = new int[Schedule.emp.length][day];
             int[][] baseSolution = new int[Schedule.emp.length][day];
             double penalty = countPenalty();
-            double[][] plot = new double[101][1];
+            double[][] plot = new double[201][1];
             int p = 0;
             long startTime = System.nanoTime();
             Schedule.copyArray(solution, newSolution);
             Schedule.copyArray(solution, baseSolution);
-            for (int i = 0; i < 1000000; i++) {
+            for (int i = 0; i < 2000000; i++) {
                 double epsilon = 1 / (Math.sqrt(i));
                 if (Math.random() < epsilon) {
                     int llh = (int) (Math.random() * 3);
@@ -731,7 +582,6 @@ public class Solution {
                         }
                     }
                 }
-//            System.out.println("2Exchange : " +score2Exchange+ "\t 3Exchange : " +score3Exchange+ "\t double : " +scoredoubleExchange);
                 if (Schedule.validAll(solution) == 0) {
                     if (countPenalty() <= penalty) {
                         penalty = countPenalty();
@@ -744,7 +594,6 @@ public class Solution {
                 }
 
                 System.out.println("iterasi ke " + (i + 1) + " penalti : " + countPenalty());
-//            System.out.println("score2Exchange : " + score2Exchange + " score3Exchange : " + score3Exchange + " double : " + scoredoubleExchange);
                 if ((i + 1) % 10000 == 0) {
                     plot[p][0] = penalty;
                     p = p + 1;
@@ -753,85 +602,10 @@ public class Solution {
 
             long endTime = System.nanoTime();
             long time = (endTime-startTime) / 1000000000;
-            plot [100][0] = time;
+            plot [200][0] = time;
             Schedule.saveOptimation(plot, e);
             System.out.println(penalty);
             Schedule.copyArray(baseSolution, solution);
-
-//            for (int j = 0; j < plot.length; j++) {
-//                for (int k = 0; k < plot[j].length; k++) {
-//                    System.out.print(plot[j][k] + " ");
-//                }
-//                System.out.println();
-//            }
-        }
-    }
-
-    public void simulatedAnnealing () {
-        int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
-        int [][] newSolution = new int [Schedule.emp.length][day];
-        Schedule.copyArray(solution, newSolution);
-        double bestPenalty; double currPenalty;
-        bestPenalty = currPenalty = countPenalty();
-        double TAwal = 10000000;
-        double coolingrate = 0.99995;
-        double diff = 0;
-        double d = 0;
-        double prob = 0;
-        int p = 0;
-        double [][] plot = new double [100][4];
-//
-        for (int i = 0; i < 1000000; i++) {
-            int llh = (int) (Math.random() * 3);
-            if (llh == 0)
-                Schedule.twoExchange(solution);
-            if (llh == 1)
-                Schedule.threeExchange(solution);
-            if (llh == 2)
-                Schedule.doubleTwoExchange(solution);
-//            currPenalty = countPenalty();
-            if (Schedule.validAll(solution) == 0) {
-                diff = countPenalty() - currPenalty;
-                d = Math.abs(diff)/TAwal;
-                prob = Math.exp(-d);
-//                System.out.println("feasible");
-                if (countPenalty() <= currPenalty) {
-                    currPenalty = countPenalty();
-                    Schedule.copyArray(solution, newSolution);
-                    if (currPenalty <= bestPenalty) {
-                        bestPenalty = currPenalty;
-                        Schedule.copyArray(solution, newSolution);
-                    } else {
-                        Schedule.copyArray(newSolution, solution);
-                    }
-                } else {
-                    if (prob >= Math.random()) {
-//                        System.out.println("solusi jelek diterima");
-                        currPenalty = countPenalty();
-                        Schedule.copyArray(solution, newSolution);
-                    } else {
-                        Schedule.copyArray(newSolution, solution);
-                    }
-                }
-            } else {
-                Schedule.copyArray(newSolution, solution);
-            }
-            TAwal = TAwal * coolingrate;
-            System.out.println("Iterasi : " + (i+1) + /**" suhu : " + TAwal + " diff : " + diff + " d : " + d + " prob : " + prob + **/ " penalti : " + countPenalty());
-            if ((i+1)%10000 == 0){
-                plot[p][0] = i+1;
-                plot[p][1] = TAwal;
-                plot[p][2] = currPenalty;
-                plot[p][3] = bestPenalty;
-                p = p+1;
-            }
-        }
-        System.out.println(bestPenalty);
-        for (int j = 0; j < plot.length; j++) {
-            for (int k = 0; k < plot[j].length; k++) {
-                System.out.print(plot[j][k] + " ");
-            }
-            System.out.println();
         }
     }
 
@@ -852,12 +626,12 @@ public class Solution {
             double diff = 0;
             double prob = 0;
             double penalty = countPenalty();
-            double[][] plot = new double[101][3];
+            double[][] plot = new double[201][3];
             int p = 0;
             long startTime = System.nanoTime();
             Schedule.copyArray(solution, newSolution);
             Schedule.copyArray(solution, baseSolution);
-            for (int i = 0; i < 1000000; i++) {
+            for (int i = 0; i < 2000000; i++) {
                 double epsilon = 1 / (Math.sqrt(i));
                 if (Math.random() < epsilon) {
                     int llh = (int) (Math.random() * 3);
@@ -1071,16 +845,9 @@ public class Solution {
                         }
                     }
                 }
-//
-//            System.out.println("2Exchange : " +score2Exchange+ "\t 3Exchange : " +score3Exchange+ "\t double : " +scoredoubleExchange);
-//            System.out.println(currPenalty);
-//            System.out.println(countPenalty());
-
-//            System.out.println(prob);
                 if (Schedule.validAll(solution) == 0) {
                     diff = countPenalty() - currPenalty;
                     prob = Math.exp(-(Math.abs(diff) / TAwal));
-//                System.out.println("feasible");
                     if (countPenalty() <= currPenalty) {
                         currPenalty = countPenalty();
                         Schedule.copyArray(solution, newSolution);
@@ -1113,141 +880,14 @@ public class Solution {
 
             long endTime = System.nanoTime();
             long time = (endTime-startTime) / 1000000000;
-            plot [100][0] = time;
+            plot [200][0] = time;
             Schedule.saveOptimation(plot, e);
-//            System.out.println(penalty);
             Schedule.copyArray(baseSolution, solution);
-
-//            System.out.println(bestPenalty);
-//            for (int j = 0; j < plot.length; j++) {
-//                for (int k = 1; k < plot[j].length; k++) {
-//                    System.out.print(plot[j][k] + " ");
-//                }
-//                System.out.println();
-//            }
-        }
-    }
-
-    public static boolean stuck(double currPenalty, double previousCost, double currentStagnatCount) {
-        double diff = currPenalty - previousCost;
-        if (diff < 0.01) {
-            currentStagnatCount = currentStagnatCount + 1;
-        } else {
-            currentStagnatCount = 0;
-        }
-        if (currentStagnatCount > 5) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    public void SAR() {
-        int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
-        int [][] newSolution = new int [Schedule.emp.length][day];
-        int [][] bestSolution = new int [Schedule.emp.length][day];
-        Schedule.copyArray(solution, newSolution);
-        Schedule.copyArray(solution, bestSolution);
-        double bestPenalty; double currPenalty;
-        bestPenalty = currPenalty = countPenalty();
-        double TAwal = 10000000; //countPenalty() * 0.01;
-        double coolingrate = 0.99995;
-        double diff = 0;
-        double d = 0;
-        double prob = 0;
-        double currentStagnantCount = 0;
-        double previousCost = countPenalty();
-        double stuckedBestCost = countPenalty();
-        double stuckedCurrentCost = countPenalty();
-        double [] prevCost = new double[1000000];
-
-        double heat = 0;
-        double[][] plot = new double[100][4];
-        int p = 0;
-//
-        for (int i = 0; i < 1000000; i++) {
-            int llh = (int) (Math.random() * 3);
-            if (llh == 0)
-                Schedule.twoExchange(solution);
-            if (llh == 1)
-                Schedule.threeExchange(solution);
-            if (llh == 2)
-                Schedule.doubleTwoExchange(solution);
-//            currPenalty = countPenalty();
-            if (Schedule.validAll(solution) == 0) {
-                diff = countPenalty() - currPenalty;
-                d = Math.abs(diff)/TAwal;
-                prob = Math.exp(-d);
-//                System.out.println("feasible");
-                if (countPenalty() <= currPenalty) {
-                    currPenalty = countPenalty();
-                    Schedule.copyArray(solution, newSolution);
-                    if (currPenalty <= bestPenalty) {
-                        bestPenalty = currPenalty;
-                        Schedule.copyArray(solution, newSolution);
-                        Schedule.copyArray(solution, bestSolution);
-                    } else {
-                        Schedule.copyArray(newSolution, solution);
-                    }
-                } else {
-                    if (prob >= Math.random()) {
-//                        System.out.println("solusi jelek diterima");
-                        currPenalty = countPenalty();
-                        Schedule.copyArray(solution, newSolution);
-                    } else {
-                        Schedule.copyArray(newSolution, solution);
-                    }
-                }
-                if (i > 0) {
-                    if (Math.abs(currPenalty - prevCost[i-1]) <= 0.01) {
-//                    System.out.println("stuck");
-                        currentStagnantCount = currentStagnantCount + 1;
-//                    System.out.println("stagnant " + currentStagnantCount);
-                        if (currentStagnantCount >= 10000) {
-                            Schedule.copyArray(bestSolution, solution);
-                            if (bestPenalty == stuckedBestCost) {
-                                if (currPenalty - stuckedCurrentCost < 0.02) {
-                                    heat = heat + 1;
-                                } else {
-                                    heat = 0;
-                                }
-                            } else {
-                                heat = 0;
-                            }
-                            currentStagnantCount = 0;
-//                            System.out.println("heat " + heat);
-                            TAwal = (heat * 0.2 * currPenalty + currPenalty) * 0.01;
-                            stuckedBestCost = bestPenalty;
-                            stuckedCurrentCost = currPenalty;
-                        }
-                        heat = 0;
-                    }
-                }
-            } else {
-                Schedule.copyArray(newSolution, solution);
-            }
-            TAwal = TAwal * coolingrate;
-            System.out.println("Iterasi : " + (i+1) + /**" suhu : " + TAwal + " diff : " + diff + " d : " + d + " prob : " + prob + **/ " penalti : " + countPenalty());
-            if ((i+1)%10000 == 0) {
-                plot[p][0] = i+1;
-                plot[p][1] = TAwal;
-                plot[p][2] = currPenalty;
-                plot[p][3] = bestPenalty;
-                p = p+1;
-            }
-            prevCost[i] = currPenalty;
-        }
-        System.out.println(bestPenalty);
-        for (int j = 0; j < plot.length; j++) {
-            for (int k = 0; k < plot[j].length; k++) {
-                System.out.print(plot[j][k] + " ");
-            }
-            System.out.println();
         }
     }
 
     public void RL_SAR() throws IOException {
-        for (int e = 0; e < 3; e++) {
+        for (int e = 0; e < 1; e++) {
             int[] score = {500, 500, 500};
             int score2Exchange = score[0];
             int score3Exchange = score[1];
@@ -1255,6 +895,7 @@ public class Solution {
             int day = Schedule.planningHorizon[(Schedule.file - 1)] * 7;
             int[][] newSolution = new int[Schedule.emp.length][day];
             int[][] baseSolution = new int[Schedule.emp.length][day];
+            int[][] bestSolution = new int[Schedule.emp.length][day];
             double currPenalty;
             double bestPenalty;
             currPenalty = bestPenalty = countPenalty();
@@ -1272,7 +913,6 @@ public class Solution {
             double heat = 0;
             int reheating = 0;
             double discountFactor = 0.9;
-//        double epsilon = 0.1;
             double[] prevCost = new double[1000000];
             double[][] plot = new double[101][3];
             int p = 0;
@@ -1294,16 +934,12 @@ public class Solution {
                         Schedule.twoExchange(solution);
                         if (countPenalty() <= bestPenalty) {
                             if (score2Exchange < 1000) {
-//                            score2Exchange = (score2Exchange + 10) * (int) (Math.pow(discountFactor, i));
-//                            score2Exchange = (i * score2Exchange + 10) / i;
                                 score2Exchange = score2Exchange + 10;
                             } else {
                                 score2Exchange = 1000;
                             }
                         } else {
                             if (score2Exchange > 0) {
-//                            score2Exchange = (score2Exchange - 10) * (int) (Math.pow(discountFactor, i));
-//                            score2Exchange = (i * score2Exchange - 10) / i;
                                 score2Exchange = score2Exchange - 10;
                             } else {
                                 score2Exchange = 0;
@@ -1314,16 +950,12 @@ public class Solution {
                         Schedule.threeExchange(solution);
                         if (countPenalty() <= bestPenalty) {
                             if (score3Exchange < 1000) {
-//                            score3Exchange = (score3Exchange + 10) * (int) (Math.pow(discountFactor, i));
-//                            score3Exchange = (i * score3Exchange + 10) / i;
                                 score3Exchange = score3Exchange + 10;
                             } else {
                                 score3Exchange = 1000;
                             }
                         } else {
                             if (score3Exchange > 0) {
-//                            score3Exchange = (score3Exchange - 10) * (int) (Math.pow(discountFactor, i));
-//                            score3Exchange = (i * score3Exchange - 10) / i;
                                 score3Exchange = score3Exchange - 10;
                             } else {
                                 score3Exchange = 0;
@@ -1334,16 +966,12 @@ public class Solution {
                         Schedule.doubleTwoExchange(solution);
                         if (countPenalty() <= bestPenalty) {
                             if (scoredoubleExchange < 1000) {
-//                            scoredoubleExchange = (scoredoubleExchange + 10) * (int) (Math.pow(discountFactor, i));
-//                            scoredoubleExchange = (i * scoredoubleExchange + 10) / i;
                                 scoredoubleExchange = scoredoubleExchange + 10;
                             } else {
                                 scoredoubleExchange = 1000;
                             }
                         } else {
                             if (scoredoubleExchange > 0) {
-//                            scoredoubleExchange = (scoredoubleExchange - 10) * (int) (Math.pow(discountFactor, i));
-//                            scoredoubleExchange = (i * scoredoubleExchange - 10) / i;
                                 scoredoubleExchange = scoredoubleExchange - 10;
                             } else {
                                 scoredoubleExchange = 0;
@@ -1355,16 +983,12 @@ public class Solution {
                             Schedule.twoExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (score2Exchange < 1000) {
-//                                score2Exchange = (score2Exchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                score2Exchange = (i * score2Exchange + 10) / i;
                                     score2Exchange = score2Exchange + 10;
                                 } else {
                                     score2Exchange = 1000;
                                 }
                             } else {
                                 if (score2Exchange > 0) {
-//                                score2Exchange = (score2Exchange - 10) * (int) (Math.pow(discountFactor, i));
-//                                score2Exchange = (i * score2Exchange - 10) / i;
                                     score2Exchange = score2Exchange - 10;
                                 } else {
                                     score2Exchange = 0;
@@ -1375,16 +999,12 @@ public class Solution {
                             Schedule.threeExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (score3Exchange < 1000) {
-//                                score3Exchange = (score3Exchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                score3Exchange = (i * score3Exchange + 10) / i;
                                     score3Exchange = score3Exchange + 10;
                                 } else {
                                     score3Exchange = 1000;
                                 }
                             } else {
                                 if (score3Exchange > 0) {
-//                                score3Exchange = (score3Exchange - 10) * (int) (Math.pow(discountFactor, i));
-//                                score3Exchange = (i * score3Exchange - 10) / i;
                                     score3Exchange = score3Exchange - 10;
                                 } else {
                                     score3Exchange = 0;
@@ -1395,16 +1015,12 @@ public class Solution {
                             Schedule.doubleTwoExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (scoredoubleExchange < 1000) {
-//                                scoredoubleExchange = (scoredoubleExchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                scoredoubleExchange = (i * scoredoubleExchange + 10) / i;
                                     scoredoubleExchange = scoredoubleExchange + 10;
                                 } else {
                                     scoredoubleExchange = 1000;
                                 }
                             } else {
                                 if (scoredoubleExchange > 0) {
-//                                scoredoubleExchange = (scoredoubleExchange - 10) * (int) (Math.pow(discountFactor, i));
-//                                scoredoubleExchange = (i * scoredoubleExchange - 10) / i;
                                     scoredoubleExchange = scoredoubleExchange - 10;
                                 } else {
                                     scoredoubleExchange = 0;
@@ -1417,16 +1033,12 @@ public class Solution {
                             Schedule.twoExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (score2Exchange < 1000) {
-//                                score2Exchange = (score2Exchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                score2Exchange = (i * score2Exchange + 10) / i;
                                     score2Exchange = score2Exchange + 10;
                                 } else {
                                     score2Exchange = 1000;
                                 }
                             } else {
                                 if (score2Exchange > 0) {
-//                                score2Exchange = (score2Exchange - 10) * (int) (Math.pow(discountFactor, i));
-//                                score2Exchange = (i * score2Exchange - 10) / i;
                                     score2Exchange = score2Exchange - 10;
                                 } else {
                                     score2Exchange = 0;
@@ -1437,16 +1049,12 @@ public class Solution {
                             Schedule.doubleTwoExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (scoredoubleExchange < 1000) {
-//                                scoredoubleExchange = (scoredoubleExchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                scoredoubleExchange = (i * scoredoubleExchange + 10) / i;
                                     scoredoubleExchange = scoredoubleExchange + 10;
                                 } else {
                                     scoredoubleExchange = 1000;
                                 }
                             } else {
                                 if (scoredoubleExchange > 0) {
-//                                scoredoubleExchange = (scoredoubleExchange -10) * (int) (Math.pow(discountFactor, i));
-//                                scoredoubleExchange = (i * scoredoubleExchange - 10) / i;
                                     scoredoubleExchange = scoredoubleExchange - 10;
                                 } else {
                                     scoredoubleExchange = 0;
@@ -1459,16 +1067,12 @@ public class Solution {
                             Schedule.twoExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (score2Exchange < 1000) {
-//                                score2Exchange = (score2Exchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                score2Exchange = (i * score2Exchange + 10) / i;
                                     score2Exchange = score2Exchange + 10;
                                 } else {
                                     score2Exchange = 1000;
                                 }
                             } else {
                                 if (score2Exchange > 0) {
-//                                score2Exchange = (score2Exchange - 10) * (int) (Math.pow(discountFactor, i));
-//                                score2Exchange = (i * score2Exchange - 10) / i;
                                     score2Exchange = score2Exchange - 10;
                                 } else {
                                     score2Exchange = 0;
@@ -1479,16 +1083,12 @@ public class Solution {
                             Schedule.threeExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (score3Exchange < 1000) {
-//                                score3Exchange = (score3Exchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                score3Exchange = (i * score3Exchange + 10) / i;
                                     score3Exchange = score3Exchange + 10;
                                 } else {
                                     score3Exchange = 1000;
                                 }
                             } else {
                                 if (score3Exchange > 0) {
-//                                score3Exchange = (score3Exchange - 10) * (int) (Math.pow(discountFactor, i));
-//                                score3Exchange = (i * score3Exchange - 10) / i;
                                     score3Exchange = score3Exchange - 10;
                                 } else {
                                     score3Exchange = 0;
@@ -1501,16 +1101,12 @@ public class Solution {
                             Schedule.threeExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (score3Exchange < 1000) {
-//                                score3Exchange = (score3Exchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                score3Exchange = (i * score3Exchange + 10) / i;
                                     score3Exchange = score3Exchange + 10;
                                 } else {
                                     score3Exchange = 1000;
                                 }
                             } else {
                                 if (score3Exchange > 0) {
-//                                score3Exchange = (score3Exchange - 10) * (int) (Math.pow(discountFactor, i));
-//                                score3Exchange = (i * score3Exchange - 10) / i;
                                     score3Exchange = score3Exchange - 10;
                                 } else {
                                     score3Exchange = 0;
@@ -1521,16 +1117,12 @@ public class Solution {
                             Schedule.doubleTwoExchange(solution);
                             if (countPenalty() <= bestPenalty) {
                                 if (scoredoubleExchange < 1000) {
-//                                scoredoubleExchange = (scoredoubleExchange + 10) * (int) (Math.pow(discountFactor, i));
-//                                scoredoubleExchange = (i * scoredoubleExchange + 10) / i;
                                     scoredoubleExchange = scoredoubleExchange + 10;
                                 } else {
                                     scoredoubleExchange = 1000;
                                 }
                             } else {
                                 if (scoredoubleExchange > 0) {
-//                                scoredoubleExchange = (scoredoubleExchange - 10) * (int) (Math.pow(discountFactor, i));
-//                                scoredoubleExchange = (i * scoredoubleExchange - 10) / i;
                                     scoredoubleExchange = scoredoubleExchange - 10;
                                 } else {
                                     scoredoubleExchange = 0;
@@ -1539,29 +1131,22 @@ public class Solution {
                         }
                     }
                 }
-//            System.out.println("2Exchange : " +score2Exchange+ "\t 3Exchange : " +score3Exchange+ "\t double : " +scoredoubleExchange);
-//            System.out.println(currPenalty);
-//            System.out.println(countPenalty());
-
-//            System.out.println(prob);
                 if (Schedule.validAll(solution) == 0) {
                     diff = countPenalty() - currPenalty;
                     d = Math.abs(diff) / TAwal;
                     prob = Math.exp(-d);
-//                System.out.println("feasible");
                     if (countPenalty() <= currPenalty) {
                         currPenalty = countPenalty();
                         Schedule.copyArray(solution, newSolution);
                         if (currPenalty <= bestPenalty) {
                             bestPenalty = currPenalty;
                             Schedule.copyArray(solution, newSolution);
-//                        Schedule.copyArray(solution, bestSolution);
+                            Schedule.copyArray(solution, bestSolution);
                         } else {
                             Schedule.copyArray(newSolution, solution);
                         }
                     } else {
                         if (prob >= Math.random()) {
-//                        System.out.println("solusi jelek diterima");
                             currPenalty = countPenalty();
                             Schedule.copyArray(solution, newSolution);
                         } else {
@@ -1570,11 +1155,8 @@ public class Solution {
                     }
                     if (i > 0 && reheating <= 5) {
                         if (Math.abs(currPenalty - prevCost[i - 1]) <= 0.01) {
-//                    System.out.println("stuck");
                             currentStagnantCount = currentStagnantCount + 1;
-//                    System.out.println("stagnant " + currentStagnantCount);
                             if (currentStagnantCount >= 50000) {
-//                            Schedule.copyArray(bestSolution, solution);
                                 if (bestPenalty == stuckedBestCost) {
                                     if (currPenalty - stuckedCurrentCost < 0.02) {
                                         heat = heat + 1;
@@ -1585,7 +1167,6 @@ public class Solution {
                                     heat = 0;
                                 }
                                 currentStagnantCount = 0;
-//                            System.out.println("heat " + heat);
                                 TAwal = (heat * 0.2 * currPenalty + currPenalty) * 0.01;
                                 stuckedBestCost = bestPenalty;
                                 stuckedCurrentCost = currPenalty;
@@ -1612,15 +1193,7 @@ public class Solution {
             long time = (endTime-startTime) / 1000000000;
             plot [100][0] = time;
             Schedule.saveOptimation(plot, e);
-//            System.out.println(penalty);
             Schedule.copyArray(baseSolution, solution);
-//            System.out.println(bestPenalty);
-//            for (int j = 0; j < plot.length; j++) {
-//                for (int k = 1; k < plot[j].length; k++) {
-//                    System.out.print(plot[j][k] + " ");
-//                }
-//                System.out.println();
-//            }
         }
     }
 }
